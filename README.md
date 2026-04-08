@@ -1,78 +1,94 @@
-# OSINT Scanner — Deep Username Intelligence Tool
+# OSINT Scanner v2 — Public Intelligence Tool
 
-Ethical OSINT tool that checks publicly accessible profile URLs and
-official public APIs across 25+ platforms. No auth bypass, no private data.
+Ethical, body-pattern-verified username scanner across 35+ popular platforms.
 
 ## Quick Start
-
-### 1. Install Python dependencies
 
 ```bash
 cd backend
 pip install -r requirements.txt
-```
-
-### 2. Run the server
-
-```bash
 python app.py
 ```
 
-### 3. Open your browser
-
-```
-http://localhost:5000
-```
+Open → http://localhost:5000
 
 ---
 
-## Features
+## What's New in v2
 
-- **Username scan** across 25+ platforms (Dev, Social, Gaming, Creative, Professional)
-- **Public API enrichment** — GitHub, Reddit, HackerNews, Dev.to, Keybase
-- **Gravatar lookup** — if an email is provided
-- **Cross-platform data mapping** — finds shared bios, locations, linked accounts
-- **Username pattern analysis** — detects embedded years, suffixes, character patterns
-- **JSON export** — full structured report downloadable or copy-to-clipboard
-- **Beautiful dark UI** — category filters, grid/list view, expandable data cards
+| Feature | v1 | v2 |
+|---|---|---|
+| Platform count | 25 | 35+ |
+| Scan method | HTTP status only | HTTP status + body-pattern matching |
+| Confidence levels | No | High / Medium / Low per result |
+| Google Dork generator | No | 12 pre-built dork links (Google + Bing) |
+| Ethics modal | No | Full modal with agreement required |
+| Instagram/TikTok/Snapchat/Facebook | Partial | ✅ All included |
+| API enrichment | GitHub, Reddit | GitHub, GitLab, Chess.com, Dailymotion |
+| Cross-platform data map | Basic | Full (location, name, bio, links) |
 
-## Platforms Checked
+---
 
-| Category       | Platforms |
-|----------------|-----------|
-| Dev / Code     | GitHub, GitLab, Bitbucket, NPM, PyPI, HackerNews, Dev.to |
-| Social         | Reddit, Twitter/X, Instagram, TikTok, Pinterest, Tumblr, Mastodon |
-| Gaming         | Steam, Twitch, Roblox |
-| Creative       | Medium, Behance, Dribbble, Flickr, SoundCloud |
-| Professional   | LinkedIn, AngelList |
-| Security       | Keybase |
+## Platforms Covered
 
-## Ethics & Legal
+| Category | Platforms |
+|---|---|
+| Social | Instagram, TikTok, Snapchat, Facebook, Twitter/X, Threads, Pinterest, Tumblr, Mastodon |
+| Video | YouTube, Twitch, Vimeo, Dailymotion |
+| Dev | GitHub, GitLab, Stack Overflow, NPM, PyPI, Replit, Codepen |
+| Music | Spotify, SoundCloud, Last.fm |
+| Gaming | Steam, Roblox, Chess.com |
+| Creative | Medium, Behance, Dribbble, DeviantArt, Flickr, Wattpad, Patreon |
+| Messaging | Telegram, Discord (public) |
+| Professional | LinkedIn |
+| Forums | Quora |
+| Shopping | Etsy |
 
-- Only queries **public** URLs (no login required to view them normally)
-- Uses only **official public APIs** (no scraping private data)
-- Follows **robots.txt** spirit — checks existence via HTTP status codes
-- No credential harvesting, no session hijacking, no ToS violations
-- Results reflect what any person can find manually through a browser
+---
+
+## How Scanning Works
+
+1. **HTTP check** — request the public profile URL
+2. **Status code filter** — 404/4xx = not found
+3. **Body-pattern check** — look for platform-specific "not found" text OR required presence text inside the page body
+4. **Confidence rating** assigned:
+   - **HIGH** — body pattern confirmed presence or absence
+   - **MEDIUM** — HTTP status only (no false-positive text found)
+   - **LOW** — redirect-based detection
+
+This eliminates most false positives from platforms that return 200 for missing profiles.
+
+---
+
+## Google Dork Generator
+
+Generates 12 pre-built search query URLs using Google/Bing operators:
+- Exact username across all sites
+- Username on specific social platforms
+- Username + email clues (from public posts)
+- Username + location mentions
+- Username in news, forums, pastes
+- Resume/CV/portfolio filetype searches
+
+**No automated scraping** — clicking opens a normal browser search tab. You review results manually.
+
+---
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | Serves the frontend |
-| POST | `/api/scan` | `{ username, email? }` → full scan result |
-| GET | `/api/platforms` | List all platforms being checked |
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/` | — | Frontend HTML |
+| POST | `/api/scan` | `{ username }` | Full scan JSON |
+| GET | `/api/platforms` | — | Platform list |
+| POST | `/api/dorks` | `{ username }` | Dork URL list |
 
-## JSON Output Structure
+---
 
-```json
-{
-  "query": { "username": "...", "timestamp": "..." },
-  "summary": { "found_count": 5, "score": 20.0, ... },
-  "username_analysis": { "length": 8, "has_numbers": true, ... },
-  "platforms_found": [ { "platform": "GitHub", "url": "...", "data": {...} } ],
-  "platforms_not_found": [...],
-  "linked_data": { "location": [{ "source": "GitHub", "value": "London" }] },
-  "gravatar": { "found": true, "display_name": "...", ... }
-}
-```
+## Ethics
+
+- Only checks **public URLs** — no login required to view them normally
+- Only uses **official public APIs** — no reverse engineering
+- **No email scraping**, no phone harvesting, no auth-system abuse
+- Dork generator produces **clickable links**, does not auto-query Google
+- Users must agree to an ethics statement before using the tool
