@@ -511,48 +511,6 @@ DORK_TEMPLATES = [
         "query": '"{username}" profile picture OR avatar',
         "icon": "🖼️",
     },
-    {
-        "label": 'Directory Listing & Logs',
-        "desc":  'Finds open directories or log files containing the username',
-        "query": '"{username}" intitle:"index of" OR inurl:logs OR inurl:env',
-        "icon": "📂",
-    },
-    {
-        "label": 'Domain/Subdomain Search',
-        "desc":  'Finds if the username is part of a subdomain (e.g., username.github.io)',
-        "query": 'site:*.* "{username}" -www',
-        "icon": "🌐",
-    },
-    {
-        "label": 'Config & API Leaks',
-        "desc":  'Searches for the username in config files (JSON, YAML, XML, ENV)',
-        "query": '"{username}" ext:json OR ext:yaml OR ext:xml OR ext:env OR ext:conf',
-        "icon": "🔑",
-    },
-    {
-        "label": 'Document Deep-Dive',
-        "desc":  'Finds PDFs, Excel sheets, or Word docs mentioning the user',
-        "query": '"{username}" filetype:pdf OR filetype:xlsx OR filetype:docx OR filetype:txt',
-        "icon": "📄",
-    },
-    {
-        "label": 'Social Media (Negative Filtered)',
-        "desc":  'Finds mentions on social media while excluding the profiles themselves',
-        "query": '"{username}" -inurl:status -inurl:profile -inurl:user',
-        "icon": "💬",
-    },
-    {
-        "label": 'Wayback Machine / Cache',
-        "desc":  'Directs Google to find archived or cached versions of profiles',
-        "query": 'inurl:web.archive.org "{username}" OR inurl:cache "{username}"',
-        "icon": "⏳",
-    },
-    {
-        "label": 'Freelance & Project History',
-        "desc":  'Targets Upwork, Fiverr, and Freelancer for project history',
-        "query": 'site:upwork.com OR site:fiverr.com OR site:freelancer.com "{username}"',
-        "icon": "💰",
-    },
 ]
 
 HEADERS = {
