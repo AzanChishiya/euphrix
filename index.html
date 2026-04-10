@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-<meta name="description" content="OSINT Scanner — ethical public-profile intelligence tool"/>
+<meta name="description" content="Euphrix OSINT Scanner — ethical public-profile intelligence tool"/>
 <meta name="theme-color" content="#040810"/>
 <title>Euphrix | Public Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -58,7 +58,7 @@ body{
   padding-bottom:env(safe-area-inset-bottom);
 }
 
-/* grid bg */
+/* Grid background */
 body::before{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:
@@ -66,15 +66,12 @@ body::before{
     linear-gradient(90deg,rgba(0,212,170,.022) 1px,transparent 1px);
   background-size:44px 44px;
 }
-/* radial glow top */
+/* Radial glow top */
 body::after{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background:radial-gradient(ellipse 90% 45% at 50% -5%,rgba(0,212,170,.07),transparent 70%);
 }
 
-/* ════════════════════════════════════════════
-   LAYOUT
-════════════════════════════════════════════ */
 .wrap{
   max-width:1080px;margin:0 auto;
   padding:0 20px;position:relative;z-index:1;
@@ -150,10 +147,7 @@ header{
   border-bottom:1px solid var(--border);
   padding:14px 0;
 }
-.hinner{
-  display:flex;align-items:center;
-  justify-content:space-between;gap:12px;flex-wrap:wrap;
-}
+.hinner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .logo{
   display:flex;align-items:center;gap:9px;
   font-family:var(--mono);font-size:12px;font-weight:700;
@@ -185,10 +179,7 @@ header{
   padding:5px 14px;border-radius:4px;margin-bottom:22px;
 }
 
-h1{
-  font-size:clamp(26px,6vw,52px);
-  font-weight:800;line-height:1.1;color:#fff;margin-bottom:14px;
-}
+h1{font-size:clamp(26px,6vw,52px);font-weight:800;line-height:1.1;color:#fff;margin-bottom:14px}
 h1 em{color:var(--accent);font-style:normal}
 .hero-desc{
   font-size:clamp(14px,2.5vw,16px);color:var(--text2);
@@ -196,7 +187,6 @@ h1 em{color:var(--accent);font-style:normal}
 }
 .hero-desc strong{color:var(--text)}
 
-/* Platform pill row */
 .pill-row{
   display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
   max-width:720px;margin:0 auto 44px;
@@ -230,23 +220,17 @@ h1 em{color:var(--accent);font-style:normal}
 }
 .inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,170,.1)}
 .inp::placeholder{color:var(--text3)}
+.inp.err{border-color:rgba(244,63,94,.6)!important}
 .inp-icon{
   position:absolute;left:14px;top:50%;transform:translateY(-50%);
-  color:var(--text3);pointer-events:none;
-  transition:color .2s;
+  color:var(--text3);pointer-events:none;transition:color .2s;
 }
-.inp:focus ~ .inp-icon, .input-wrap:focus-within .inp-icon{color:var(--accent)}
+.input-wrap:focus-within .inp-icon{color:var(--accent)}
 .inp-hint{font-size:11px;color:var(--text3);margin-top:5px;padding-left:2px}
-
-/* validation error inline */
-.inp.err{border-color:rgba(244,63,94,.6)!important}
 .field-err{font-size:11px;color:var(--red);margin-top:4px;padding-left:2px;display:none}
 .field-err.show{display:block}
 
-.scan-meta{
-  text-align:center;font-family:var(--mono);font-size:11px;
-  color:var(--text3);margin-bottom:14px;
-}
+.scan-meta{text-align:center;font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:14px}
 .scan-meta strong{color:var(--accent)}
 
 .btn-scan{
@@ -260,15 +244,13 @@ h1 em{color:var(--accent);font-style:normal}
 .btn-scan:hover:not(:disabled){background:#00f0c0;box-shadow:var(--glow)}
 .btn-scan:active:not(:disabled){transform:scale(.985)}
 .btn-scan:disabled{opacity:.4;cursor:not-allowed}
-.btn-scan svg{flex-shrink:0}
-
 .card-footer{text-align:center;margin-top:14px;font-size:12px;color:var(--text3);line-height:1.6}
 .card-footer strong{color:var(--text2)}
 
 /* ════════════════════════════════════════════
    PROGRESS
 ════════════════════════════════════════════ */
-#progress-section{display:none;padding:40px 0}
+#progress-section{display:none;padding:40px 0 0}
 .prog-card{
   max-width:640px;margin:0 auto;
   background:var(--card);border:1px solid var(--border2);
@@ -276,11 +258,7 @@ h1 em{color:var(--accent);font-style:normal}
 }
 @media(min-width:480px){.prog-card{padding:32px}}
 
-.prog-head{
-  display:flex;align-items:center;gap:10px;
-  font-family:var(--mono);font-size:12px;color:var(--accent);
-  margin-bottom:18px;
-}
+.prog-head{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:18px}
 .spin{
   width:13px;height:13px;flex-shrink:0;
   border:2px solid rgba(0,212,170,.25);
@@ -288,32 +266,41 @@ h1 em{color:var(--accent);font-style:normal}
   border-radius:50%;animation:spin .7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+.spin.done{animation:none;border-color:var(--green);border-top-color:var(--green)}
 
 .pbar-track{background:var(--surf);border-radius:4px;height:4px;overflow:hidden;margin-bottom:8px}
 .pbar{
   height:100%;border-radius:4px;
   background:linear-gradient(90deg,var(--accent),#00f0c0);
-  width:0%;transition:width .38s ease;
+  width:0%;transition:width .4s cubic-bezier(.16,1,.3,1);
   box-shadow:0 0 10px var(--accent);
 }
 .pbar-meta{
   display:flex;justify-content:space-between;
-  font-family:var(--mono);font-size:11px;color:var(--text3);
-  margin-bottom:16px;
+  font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:16px;
 }
 .scan-log{
   background:var(--surf);border:1px solid var(--border);
   border-radius:var(--r-sm);padding:12px 14px;
-  height:120px;overflow-y:auto;
+  height:130px;overflow-y:auto;
   font-family:var(--mono);font-size:11px;color:var(--text3);line-height:1.85;
 }
-@media(min-width:480px){.scan-log{height:140px}}
 .ll{animation:fadeUp .22s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}}
 .l-found{color:var(--green)}
 .l-info{color:var(--blue)}
 .l-done{color:var(--accent)}
 .l-warn{color:var(--amber)}
+.l-err{color:var(--red)}
+
+/* Live counter badge inside progress */
+.live-found-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:11px;
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
+  color:var(--green);padding:3px 12px;border-radius:4px;margin-left:auto;
+}
+.live-found-badge span{font-weight:700;font-size:14px}
 
 /* ════════════════════════════════════════════
    ERROR BANNER
@@ -329,23 +316,15 @@ h1 em{color:var(--accent);font-style:normal}
 .err-icon{flex-shrink:0;font-size:16px;margin-top:1px}
 .err-txt{flex:1;line-height:1.55}
 .err-txt strong{display:block;font-weight:700;margin-bottom:2px}
-.err-close{
-  background:none;border:none;color:var(--red);
-  cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;
-  padding:0 0 0 8px;opacity:.7;
-}
+.err-close{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 0 0 8px;opacity:.7}
 .err-close:hover{opacity:1}
 
 /* ════════════════════════════════════════════
    RESULTS
 ════════════════════════════════════════════ */
-#results-section{display:none;padding:36px 0 60px}
+#results-section{display:none;padding:32px 0 60px}
 
-/* Action bar */
-.action-bar{
-  display:flex;flex-wrap:wrap;gap:8px;
-  margin-bottom:24px;align-items:center;
-}
+.action-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;align-items:center}
 .btn-ghost{
   display:inline-flex;align-items:center;gap:7px;
   padding:9px 16px;border:1px solid var(--border2);border-radius:var(--r-sm);
@@ -357,36 +336,30 @@ h1 em{color:var(--accent);font-style:normal}
 .btn-ghost.danger{color:var(--red);border-color:rgba(244,63,94,.25)}
 .btn-ghost.danger:hover{background:var(--red-bg);border-color:var(--red)}
 
-/* Stat grid */
-.stat-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;margin-bottom:20px;
-}
+/* Stats */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
 @media(min-width:600px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
 
-.stat{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r);padding:16px;text-align:center;
-}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center}
 .stat.hi{border-color:rgba(0,212,170,.28);box-shadow:var(--glow-sm)}
 .stat-n{
   display:block;font-family:var(--mono);font-weight:700;
   font-size:clamp(24px,5vw,32px);color:var(--accent);margin-bottom:4px;
+  transition:all .3s ease;
 }
 .stat.amber .stat-n{color:var(--amber)}
 .stat.blue  .stat-n{color:var(--blue)}
 .stat.red   .stat-n{color:var(--red)}
 .stat-l{font-size:11px;color:var(--text3);letter-spacing:.02em}
 
+/* Number bump animation */
+@keyframes numBump{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
+.num-bump{animation:numBump .25s ease}
+
 /* Confidence strip */
-.conf-strip{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r);padding:16px 20px;margin-bottom:20px;
-}
+.conf-strip{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:20px}
 .conf-title{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
 .conf-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.conf-item{}
 .conf-lbl{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:5px}
 .conf-track{background:var(--surf);border-radius:3px;height:5px;overflow:hidden;margin-bottom:4px}
 .conf-bar{height:100%;border-radius:3px;transition:width 1.1s cubic-bezier(.16,1,.3,1)}
@@ -396,19 +369,13 @@ h1 em{color:var(--accent);font-style:normal}
 .conf-val{font-family:var(--mono);font-size:11px;color:var(--text2)}
 
 /* Tabs */
-.tabs{
-  display:flex;overflow-x:auto;gap:0;
-  border-bottom:1px solid var(--border);
-  margin-bottom:24px;
-  scrollbar-width:none;
-}
+.tabs{display:flex;overflow-x:auto;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{
   flex-shrink:0;padding:10px 18px;
   background:none;border:none;border-bottom:2px solid transparent;
   font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text3);
-  cursor:pointer;transition:all .15s;white-space:nowrap;
-  margin-bottom:-1px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;margin-bottom:-1px;
 }
 .tab:hover{color:var(--text)}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -416,20 +383,12 @@ h1 em{color:var(--accent);font-style:normal}
 .tab-pane{display:none}
 .tab-pane.on{display:block}
 
-/* Section header */
 .sec-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .sec-hd h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2)}
-.cnt-badge{
-  font-family:var(--mono);font-size:10px;
-  background:var(--accent-gl);color:var(--accent);
-  padding:2px 9px;border-radius:3px;
-}
+.cnt-badge{font-family:var(--mono);font-size:10px;background:var(--accent-gl);color:var(--accent);padding:2px 9px;border-radius:3px}
 
 /* Filter + view strip */
-.tool-bar{
-  display:flex;flex-wrap:wrap;align-items:center;
-  gap:8px;margin-bottom:12px;
-}
+.tool-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
 .fbtn{
   font-family:var(--mono);font-size:11px;
   padding:5px 13px;border-radius:20px;
@@ -442,19 +401,14 @@ h1 em{color:var(--accent);font-style:normal}
 .vsw-group{display:flex;gap:0;margin-left:auto}
 .vsw{
   font-family:var(--mono);font-size:11px;padding:5px 12px;
-  border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;
-  transition:all .15s;
+  border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;
 }
 .vsw:first-child{border-radius:5px 0 0 5px}
 .vsw:last-child{border-radius:0 5px 5px 0;margin-left:-1px}
 .vsw.on{background:var(--accent-gl);border-color:var(--accent);color:var(--accent);z-index:1;position:relative}
 
-/* Platform cards — GRID */
-.pgrid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:9px;
-}
+/* ═══ Platform cards — GRID ═══ */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px}
 @media(max-width:480px){.pgrid{grid-template-columns:1fr}}
 
 .pcard{
@@ -470,18 +424,22 @@ h1 em{color:var(--accent);font-style:normal}
   transform:translateY(-2px);
 }
 
-/* Platform cards — LIST */
-.pgrid.list{grid-template-columns:1fr}
-.pgrid.list .pcard{
-  flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;
-  padding:12px 16px;
+/* Card enter animation — used when cards pop in during live scan */
+@keyframes cardEnter{
+  from{opacity:0;transform:translateY(14px) scale(0.96)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
 }
+.pcard.entering{animation:cardEnter .38s cubic-bezier(.34,1.56,.64,1) forwards}
+
+/* ═══ Platform cards — LIST ═══ */
+.pgrid.list{grid-template-columns:1fr}
+.pgrid.list .pcard{flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px}
 .pgrid.list .pcard-body{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .pgrid.list .pcard-url{margin:0;flex:1;min-width:0}
 .pgrid.list .pcard-meta{display:flex;align-items:center;gap:8px;margin-left:auto}
 .pgrid.list .pcard-data{display:none!important}
 
-/* card internals */
+/* Card internals */
 .pcard-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .pname{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;color:var(--text);white-space:nowrap}
 .pstatus{
@@ -492,9 +450,7 @@ h1 em{color:var(--accent);font-style:normal}
 .pstatus.nope   {background:rgba(30,50,80,.5);color:var(--text3);border:1px solid var(--border)}
 .pstatus.err    {background:var(--red-bg);color:var(--red);border:1px solid rgba(244,63,94,.2)}
 
-.pcard-url{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-}
+.pcard-url{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .purl{
   font-family:var(--mono);font-size:10px;color:var(--accent);
   text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
@@ -503,38 +459,22 @@ h1 em{color:var(--accent);font-style:normal}
 .ptime{font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap;flex-shrink:0}
 
 .pcard-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.conf-pill{
-  font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;
-  letter-spacing:.06em;font-weight:600;
-}
+.conf-pill{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;letter-spacing:.06em;font-weight:600}
 .conf-pill.high  {background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.18)}
 .conf-pill.medium{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.18)}
 .conf-pill.low   {background:var(--red-bg);color:var(--red);border:1px solid rgba(244,63,94,.18)}
-.cat-pill{
-  font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;
-  border:1px solid var(--border2);color:var(--text3);
-}
-.expand-btn{
-  font-family:var(--mono);font-size:10px;color:var(--text3);
-  background:none;border:none;cursor:pointer;padding:0;transition:color .15s;white-space:nowrap;
-}
+.cat-pill{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);color:var(--text3)}
+.expand-btn{font-family:var(--mono);font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;padding:0;transition:color .15s;white-space:nowrap}
 .expand-btn:hover{color:var(--accent)}
 
-.pcard-data{
-  border-top:1px solid var(--border);padding-top:10px;
-  display:none;
-}
+.pcard-data{border-top:1px solid var(--border);padding-top:10px;display:none}
 .pcard-data.open{display:block}
 .data-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
 .dk{font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap}
 .dv{font-family:var(--mono);font-size:10px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* Not-found compact list */
-.nf-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
-  gap:7px;
-}
+/* Not found compact */
+.nf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:7px}
 @media(max-width:400px){.nf-grid{grid-template-columns:repeat(2,1fr)}}
 .nf-card{
   background:var(--card);border:1px solid var(--border);
@@ -551,74 +491,37 @@ h1 em{color:var(--accent);font-style:normal}
   border-radius:var(--r-sm);padding:12px 14px;
   display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;
 }
-.lkey{
-  font-family:var(--mono);font-size:10px;color:var(--accent);
-  letter-spacing:.08em;text-transform:uppercase;
-  min-width:100px;flex-shrink:0;padding-top:3px;
-}
+.lkey{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;min-width:100px;flex-shrink:0;padding-top:3px}
 .lvals{display:flex;flex-wrap:wrap;gap:7px}
-.ltag-wrap{}
-.ltag{
-  font-family:var(--mono);font-size:11px;
-  background:var(--card2);border:1px solid var(--border2);
-  color:var(--text2);padding:3px 10px;border-radius:4px;display:block;
-}
+.ltag{font-family:var(--mono);font-size:11px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:3px 10px;border-radius:4px;display:block}
 .lsrc{font-size:10px;color:var(--text3);margin-top:2px;text-align:center}
 
 /* Analysis */
-.analysis-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r);padding:20px;
-}
+.analysis-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .atags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.atag{
-  font-family:var(--mono);font-size:11px;
-  padding:5px 13px;border-radius:20px;
-  border:1px solid var(--border2);color:var(--text3);background:var(--surf);
-}
-.atag.on{border-color:rgba(0,212,170,.35);color:var(--accent);background:var(--accent-gl)}
+.atag{font-family:var(--mono);font-size:11px;padding:5px 13px;border-radius:20px;border:1px solid var(--border2);color:var(--text3);background:var(--surf)}
+.atag.on  {border-color:rgba(0,212,170,.35);color:var(--accent);background:var(--accent-gl)}
 .atag.warn{border-color:rgba(245,158,11,.35);color:var(--amber);background:var(--amber-bg)}
 .atag.info{border-color:rgba(56,189,248,.35);color:var(--blue);background:var(--blue-bg)}
-
-/* Error summary card */
-.error-summary{
-  background:var(--red-bg);border:1px solid rgba(244,63,94,.2);
-  border-radius:var(--r-sm);padding:14px 16px;margin-top:12px;
-}
-.error-summary-title{font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px}
-.err-type-row{
-  display:flex;justify-content:space-between;
-  font-family:var(--mono);font-size:11px;padding:3px 0;
-  border-bottom:1px solid rgba(244,63,94,.1);color:var(--text2);
-}
-.err-type-row:last-child{border-bottom:none}
-.err-type-row span:last-child{color:var(--red)}
 
 /* ════════════════════════════════════════════
    DORK SECTION
 ════════════════════════════════════════════ */
 #dork-section{display:none;padding-bottom:64px}
-.section-divider{
-  height:1px;background:var(--border);
-  margin:40px 0;position:relative;
-}
+.section-divider{height:1px;background:var(--border);margin:40px 0;position:relative}
 .section-divider::before{
-  content:attr(data-label);
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  background:var(--bg);color:var(--text3);
-  font-family:var(--mono);font-size:10px;letter-spacing:.15em;
+  content:attr(data-label);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:var(--bg);color:var(--text3);font-family:var(--mono);font-size:10px;letter-spacing:.15em;
   padding:0 14px;white-space:nowrap;
 }
 
 .dork-intro{
   background:var(--blue-bg);border:1px solid rgba(56,189,248,.2);
   border-radius:var(--r-sm);padding:14px 18px;
-  font-size:13px;color:var(--text2);line-height:1.65;
-  margin-bottom:20px;
+  font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:20px;
 }
 .dork-intro strong{color:var(--blue)}
 
-/* Group headers */
 .dork-group-title{
   font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--text3);border-left:2px solid var(--accent);padding-left:10px;
@@ -626,11 +529,7 @@ h1 em{color:var(--accent);font-style:normal}
 }
 .dork-group-title:first-of-type{margin-top:0}
 
-.dork-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
-  gap:9px;
-}
+.dork-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:9px}
 @media(max-width:400px){.dork-grid{grid-template-columns:1fr}}
 
 .dork-card{
@@ -639,11 +538,7 @@ h1 em{color:var(--accent);font-style:normal}
   display:flex;flex-direction:column;gap:10px;
   transition:border-color .2s,transform .15s,box-shadow .15s;
 }
-.dork-card:hover{
-  border-color:rgba(56,189,248,.4);
-  transform:translateY(-2px);
-  box-shadow:0 8px 24px rgba(0,0,0,.3);
-}
+.dork-card:hover{border-color:rgba(56,189,248,.4);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .dork-top{display:flex;align-items:flex-start;gap:10px}
 .dork-icon{font-size:18px;flex-shrink:0;margin-top:2px;line-height:1}
 .dork-lbl{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
@@ -652,8 +547,7 @@ h1 em{color:var(--accent);font-style:normal}
   font-family:var(--mono);font-size:10px;color:var(--text3);
   background:var(--surf);border:1px solid var(--border);
   border-radius:var(--r-sm);padding:8px 10px;
-  overflow-x:auto;white-space:nowrap;
-  scrollbar-width:thin;
+  overflow-x:auto;white-space:nowrap;scrollbar-width:thin;
 }
 .dork-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .dork-btn{
@@ -670,6 +564,23 @@ h1 em{color:var(--accent);font-style:normal}
 .dork-btn.d:hover{background:rgba(34,197,94,.16)}
 
 /* ════════════════════════════════════════════
+   SCANNING LIVE INDICATOR in results header
+════════════════════════════════════════════ */
+.scanning-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10px;
+  background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);
+  color:var(--accent);padding:4px 12px;border-radius:4px;
+  animation:pulsePill 1.5s ease-in-out infinite;
+}
+@keyframes pulsePill{0%,100%{opacity:.7}50%{opacity:1}}
+.scanning-pill .dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+  animation:heartbeat 1.2s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════
    TOAST
 ════════════════════════════════════════════ */
 #toast{
@@ -681,28 +592,20 @@ h1 em{color:var(--accent);font-style:normal}
   color:var(--text);font-size:13px;padding:11px 20px;
   border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);
   opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);
-  white-space:nowrap;max-width:calc(100vw - 40px);
-  text-align:center;
+  white-space:nowrap;max-width:calc(100vw - 40px);text-align:center;
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ════════════════════════════════════════════
-   EMPTY STATES
+   MISC
 ════════════════════════════════════════════ */
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:13px}
 .empty strong{display:block;font-size:24px;margin-bottom:8px}
 
-/* ════════════════════════════════════════════
-   SCROLLBAR
-════════════════════════════════════════════ */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--surf)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--border3)}
-
-/* ════════════════════════════════════════════
-   FOCUS (accessibility)
-════════════════════════════════════════════ */
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 </style>
 </head>
@@ -742,6 +645,7 @@ h1 em{color:var(--accent);font-style:normal}
     <div class="hbadges">
       <span class="hbadge ok">✓ ETHICAL</span>
       <span class="hbadge">PUBLIC DATA</span>
+      <span class="hbadge">⚡ SSE STREAMING</span>
       <span class="hbadge" id="hdr-plat-count">— PLATFORMS</span>
     </div>
   </div>
@@ -753,8 +657,8 @@ h1 em{color:var(--accent);font-style:normal}
     <div class="hero-tag" aria-hidden="true">OPEN SOURCE INTELLIGENCE</div>
     <h1>Find every <em>public profile</em><br>linked to a username</h1>
     <p class="hero-desc">
-      Enter any username. We check <strong id="hero-count">45+</strong> popular platforms at once —
-      using body-pattern verification, not just status codes, so results are accurate.
+      Enter any username. We check <strong id="hero-count">40+</strong> popular platforms at once —
+      results stream in <strong>live</strong> as each platform responds, so you never wait in silence.
     </p>
     <div class="pill-row" id="pill-row" aria-label="Supported platforms"></div>
 
@@ -777,15 +681,15 @@ h1 em{color:var(--accent);font-style:normal}
       </div>
 
       <p class="scan-meta" id="scan-meta">
-        Scanning across <strong id="scan-plat-count">45</strong> platforms ·
-        body-pattern matching · rotating user-agents
+        Streaming across <strong id="scan-plat-count">40</strong> platforms ·
+        30 concurrent checks · rotating user-agents
       </p>
 
       <button class="btn-scan" id="scan-btn" onclick="startScan()" aria-label="Start deep scan">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Start Deep Scan
       </button>
-      <p class="card-footer">Checks <strong>public URLs only</strong> — same pages visible in any browser without login</p>
+      <p class="card-footer">Checks <strong>public URLs only</strong> — results appear in real-time as platforms respond</p>
     </div>
   </div>
 </section>
@@ -795,14 +699,17 @@ h1 em{color:var(--accent);font-style:normal}
   <div class="wrap">
     <div class="prog-card">
       <div class="prog-head">
-        <div class="spin" aria-hidden="true"></div>
+        <div class="spin" id="prog-spin" aria-hidden="true"></div>
         <span id="prog-label">Initialising scan…</span>
+        <div class="live-found-badge" id="live-found-badge" style="display:none">
+          Found: <span id="live-found-num">0</span>
+        </div>
       </div>
       <div class="pbar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pbar-track">
         <div class="pbar" id="pbar"></div>
       </div>
       <div class="pbar-meta">
-        <span id="prog-msg">Starting…</span>
+        <span id="prog-msg">Connecting…</span>
         <span id="prog-pct">0%</span>
       </div>
       <div class="scan-log" id="scan-log" aria-label="Scan activity log"></div>
@@ -826,7 +733,7 @@ h1 em{color:var(--accent);font-style:normal}
 <section id="results-section" aria-label="Scan results">
   <div class="wrap">
 
-    <div class="action-bar">
+    <div class="action-bar" id="action-bar">
       <button class="btn-ghost" onclick="dlJSON()" aria-label="Download JSON report">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download JSON
@@ -835,7 +742,10 @@ h1 em{color:var(--accent);font-style:normal}
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy JSON
       </button>
-      <button class="btn-ghost danger" onclick="resetTool()" aria-label="Start a new scan">
+      <div id="scanning-indicator" style="display:none">
+        <div class="scanning-pill"><div class="dot"></div> SCANNING LIVE</div>
+      </div>
+      <button class="btn-ghost danger" onclick="resetTool()" aria-label="Start a new scan" style="margin-left:auto">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
         New Scan
       </button>
@@ -844,9 +754,9 @@ h1 em{color:var(--accent);font-style:normal}
     <!-- Stats -->
     <div class="stat-grid" role="region" aria-label="Scan summary">
       <div class="stat hi"><span class="stat-n" id="s-found">0</span><div class="stat-l">Profiles Found</div></div>
-      <div class="stat amber"><span class="stat-n" id="s-score">0%</span><div class="stat-l">Match Score</div></div>
-      <div class="stat blue"><span class="stat-n" id="s-chk">0</span><div class="stat-l">Platforms Checked</div></div>
-      <div class="stat red"><span class="stat-n" id="s-err">0</span><div class="stat-l">Scan Errors</div></div>
+      <div class="stat amber"><span class="stat-n" id="s-score">—</span><div class="stat-l">Match Score</div></div>
+      <div class="stat blue"><span class="stat-n" id="s-chk">0</span><div class="stat-l">Checked</div></div>
+      <div class="stat red"><span class="stat-n" id="s-err">0</span><div class="stat-l">Errors</div></div>
     </div>
 
     <!-- Confidence -->
@@ -873,27 +783,34 @@ h1 em{color:var(--accent);font-style:normal}
 
     <!-- Tabs -->
     <div class="tabs" role="tablist">
-      <button class="tab on" role="tab" aria-selected="true" aria-controls="pane-found" onclick="showTab('pane-found',this)">✅ Found</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="pane-linked" onclick="showTab('pane-linked',this)">🔗 Linked Data</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="pane-analysis" onclick="showTab('pane-analysis',this)">🔍 Analysis</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="pane-nf" onclick="showTab('pane-nf',this)">❌ Not Found</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="pane-errors" onclick="showTab('pane-errors',this)" id="err-tab" style="display:none">⚠ Errors</button>
+      <button class="tab on" role="tab" aria-selected="true"  aria-controls="pane-found"    onclick="showTab('pane-found',this)">✅ Found</button>
+      <button class="tab"    role="tab" aria-selected="false" aria-controls="pane-linked"   onclick="showTab('pane-linked',this)">🔗 Linked Data</button>
+      <button class="tab"    role="tab" aria-selected="false" aria-controls="pane-analysis" onclick="showTab('pane-analysis',this)">🔍 Analysis</button>
+      <button class="tab"    role="tab" aria-selected="false" aria-controls="pane-nf"       onclick="showTab('pane-nf',this)">❌ Not Found</button>
+      <button class="tab"    role="tab" aria-selected="false" aria-controls="pane-errors"   onclick="showTab('pane-errors',this)" id="err-tab" style="display:none">⚠ Errors</button>
     </div>
 
-    <!-- FOUND -->
+    <!-- FOUND pane -->
     <div class="tab-pane on" id="pane-found" role="tabpanel">
-      <div class="sec-hd"><h2>Profiles Found</h2><span class="cnt-badge" id="found-cnt">0</span></div>
+      <div class="sec-hd">
+        <h2>Profiles Found</h2>
+        <span class="cnt-badge" id="found-cnt">0</span>
+      </div>
       <div class="tool-bar" id="filter-bar">
         <button class="fbtn on" onclick="filterCat('all',this)">All</button>
         <div class="vsw-group">
           <button class="vsw on" onclick="setView('grid',this)" title="Grid view">⊞</button>
-          <button class="vsw" onclick="setView('list',this)" title="List view">☰</button>
+          <button class="vsw"    onclick="setView('list',this)" title="List view">☰</button>
         </div>
       </div>
-      <div class="pgrid" id="found-grid"></div>
+      <div class="pgrid" id="found-grid">
+        <div class="empty" id="found-empty" style="grid-column:1/-1">
+          <strong>—</strong>Waiting for results…
+        </div>
+      </div>
     </div>
 
-    <!-- LINKED -->
+    <!-- LINKED DATA pane -->
     <div class="tab-pane" id="pane-linked" role="tabpanel">
       <div class="sec-hd"><h2>Cross-Platform Data</h2><span class="cnt-badge" id="linked-cnt">0</span></div>
       <div class="linked-list" id="linked-list">
@@ -901,7 +818,7 @@ h1 em{color:var(--accent);font-style:normal}
       </div>
     </div>
 
-    <!-- ANALYSIS -->
+    <!-- ANALYSIS pane -->
     <div class="tab-pane" id="pane-analysis" role="tabpanel">
       <div class="sec-hd"><h2>Username Analysis</h2></div>
       <div class="analysis-card">
@@ -910,20 +827,18 @@ h1 em{color:var(--accent);font-style:normal}
       </div>
     </div>
 
-    <!-- NOT FOUND -->
+    <!-- NOT FOUND pane -->
     <div class="tab-pane" id="pane-nf" role="tabpanel">
       <div class="sec-hd"><h2>Not Found</h2><span class="cnt-badge" id="nf-cnt">0</span></div>
       <div class="nf-grid" id="nf-grid"></div>
     </div>
 
-    <!-- ERRORS -->
+    <!-- ERRORS pane -->
     <div class="tab-pane" id="pane-errors" role="tabpanel">
       <div class="sec-hd"><h2>Scan Errors</h2><span class="cnt-badge" id="errs-cnt">0</span></div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
-        These platforms could not be reached during the scan (network timeout, connection refused, etc.).
-        Results are <strong style="color:var(--text)">not</strong> counted as "not found" — the status is simply unknown.
+        These platforms could not be reached. Results are <strong style="color:var(--text)">not</strong> counted as "not found" — status is unknown.
       </p>
-      <div id="error-type-summary"></div>
       <div class="pgrid" id="err-grid"></div>
     </div>
 
@@ -950,320 +865,468 @@ h1 em{color:var(--accent);font-style:normal}
 <script>
 'use strict';
 
-/* ════ State ════ */
-let scanData   = null;
-let scanActive = false;
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let scanData     = null;
+let scanActive   = false;
+let liveFound    = 0;
+let liveChecked  = 0;
+let liveErrors   = 0;
+let foundPlatforms     = [];
+let notFoundPlatforms  = [];
+let errorPlatforms     = [];
+let categoriesSeen     = new Set();
+let sseBuffer          = '';  // Buffer for partial SSE chunks
 
-/* ════ Modal ════ */
-function toggleAgree(e){
-  const cb  = document.getElementById('agree-cb');
-  const btn = document.getElementById('proceed-btn');
-  // If click came from checkbox itself, let default handler fire first
-  if(e && e.target === cb) return;
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+function toggleAgree(e) {
+  const cb = document.getElementById('agree-cb');
+  if (e && e.target === cb) return;
   cb.checked = !cb.checked;
   syncProceed();
 }
 document.getElementById('agree-cb').addEventListener('change', syncProceed);
-function syncProceed(){
-  const ok = document.getElementById('agree-cb').checked;
+function syncProceed() {
+  const ok  = document.getElementById('agree-cb').checked;
   const btn = document.getElementById('proceed-btn');
   btn.disabled = !ok;
   btn.classList.toggle('active', ok);
 }
-function closeModal(){
-  if(!document.getElementById('agree-cb').checked) return;
+function closeModal() {
+  if (!document.getElementById('agree-cb').checked) return;
   const m = document.getElementById('modal-overlay');
-  m.style.transition='opacity .3s';
-  m.style.opacity='0';
-  setTimeout(()=>m.remove(),300);
+  m.style.transition = 'opacity .3s';
+  m.style.opacity    = '0';
+  setTimeout(() => m.remove(), 300);
 }
 
-/* ════ Load platform list ════ */
-(async function loadPlatforms(){
-  try{
-    const r = await fetch('/api/platforms');
-    if(!r.ok) return;
+/* ═══════════════════════════════════════════
+   LOAD PLATFORM LIST (on page load)
+═══════════════════════════════════════════ */
+(async function loadPlatforms() {
+  try {
+    const r    = await fetch('/api/platforms');
+    if (!r.ok) return;
     const list = await r.json();
-    const n = list.length;
-    document.getElementById('hdr-plat-count').textContent = n+' PLATFORMS';
-    document.getElementById('hero-count').textContent     = n+'+';
+    const n    = list.length;
+
+    document.getElementById('hdr-plat-count').textContent  = n + ' PLATFORMS';
+    document.getElementById('hero-count').textContent      = n + '+';
     document.getElementById('scan-plat-count').textContent = n;
+
     const row = document.getElementById('pill-row');
     const show = list.slice(0, 22);
-    show.forEach(p=>{
+    show.forEach(p => {
       const el = document.createElement('div');
-      el.className = 'pill';
-      el.textContent = p.icon+' '+p.name;
+      el.className   = 'pill';
+      el.textContent = p.icon + ' ' + p.name;
       row.appendChild(el);
     });
-    if(n > 22){
+    if (n > 22) {
       const more = document.createElement('div');
-      more.className = 'pill';
-      more.textContent = '+'+(n-22)+' more';
+      more.className   = 'pill';
+      more.textContent = '+' + (n - 22) + ' more';
       row.appendChild(more);
     }
-  }catch(_){}
+  } catch (_) {}
 })();
 
-/* ════ Input validation ════ */
-const inp = document.getElementById('inp-u');
+/* ═══════════════════════════════════════════
+   INPUT VALIDATION
+═══════════════════════════════════════════ */
+const inp    = document.getElementById('inp-u');
 const inpErr = document.getElementById('inp-err');
-inp.addEventListener('input', ()=>{
+
+inp.addEventListener('input', () => {
   inp.classList.remove('err');
   inpErr.classList.remove('show');
-  inpErr.textContent='';
+  inpErr.textContent = '';
 });
-function validateInput(username){
-  if(!username){
-    return 'Please enter a username.';
-  }
-  if(username.length > 50){
-    return 'Username must be 50 characters or fewer.';
-  }
-  if(!/^[a-zA-Z0-9._\-]{1,50}$/.test(username)){
+
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !scanActive) startScan();
+});
+
+function validateInput(username) {
+  if (!username)              return 'Please enter a username.';
+  if (username.length > 50)   return 'Username must be 50 characters or fewer.';
+  if (!/^[a-zA-Z0-9._\-]{1,50}$/.test(username))
     return 'Username may only contain letters, numbers, dots ( . ), hyphens ( - ), or underscores ( _ ).';
-  }
   return null;
 }
-function showFieldErr(msg){
+
+function showFieldErr(msg) {
   inp.classList.add('err');
   inpErr.textContent = msg;
   inpErr.classList.add('show');
   inp.focus();
 }
 
-/* ════ Scan orchestration ════ */
-async function startScan(){
-  if(scanActive) return;
-  const username = inp.value.trim();
-  const err = validateInput(username);
-  if(err){ showFieldErr(err); return; }
+/* ═══════════════════════════════════════════
+   SSE CHUNK PARSER
+   Handles partial chunks and multi-event chunks
+═══════════════════════════════════════════ */
+function parseSseChunk(chunk) {
+  sseBuffer += chunk;
+  const events = [];
 
-  scanActive = true;
+  // SSE events are separated by double newlines
+  const rawParts = sseBuffer.split('\n\n');
+  // Keep the last (possibly incomplete) part in the buffer
+  sseBuffer = rawParts.pop() || '';
+
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    for (const line of trimmed.split('\n')) {
+      // Lines starting with ':' are SSE comments (heartbeats) — ignore
+      if (line.startsWith(':')) continue;
+
+      if (line.startsWith('data: ')) {
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr) continue;
+        try {
+          events.push(JSON.parse(jsonStr));
+        } catch (e) {
+          // Skip malformed JSON
+        }
+      }
+    }
+  }
+  return events;
+}
+
+/* ═══════════════════════════════════════════
+   MAIN SCAN FUNCTION — uses fetch + ReadableStream
+═══════════════════════════════════════════ */
+async function startScan() {
+  if (scanActive) return;
+
+  const username = inp.value.trim();
+  const err      = validateInput(username);
+  if (err) { showFieldErr(err); return; }
+
+  // ── Reset state ──
+  scanActive      = true;
+  liveFound       = 0;
+  liveChecked     = 0;
+  liveErrors      = 0;
+  foundPlatforms  = [];
+  notFoundPlatforms = [];
+  errorPlatforms  = [];
+  categoriesSeen  = new Set();
+  sseBuffer       = '';
+  scanData        = null;
+
   document.getElementById('scan-btn').disabled = true;
   closeErr();
 
-  // Reset UI sections
-  ['results-section','dork-section'].forEach(id=>{
-    document.getElementById(id).style.display='none';
-  });
-  document.getElementById('scan-log').innerHTML = '';
-  document.getElementById('pbar').style.width   = '0%';
+  // Reset UI
+  resetResultsUI();
   document.getElementById('progress-section').style.display = 'block';
-  document.getElementById('progress-section').scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('results-section').style.display  = 'block';
+  document.getElementById('dork-section').style.display     = 'none';
+  document.getElementById('scanning-indicator').style.display = '';
+  document.getElementById('live-found-badge').style.display  = '';
 
-  animateProgress();
+  document.getElementById('progress-section')
+    .scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  try{
-    const res = await fetch('/api/scan',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username})
+  setProg(2, 'Opening connection to server…');
+  addLog('Initiating streaming scan for: ' + username, 'info');
+
+  try {
+    const response = await fetch('/api/stream', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username }),
     });
-    const json = await res.json();
-    if(!res.ok){
-      throw Object.assign(new Error(json.error||'Unknown error'), {code: json.code||'SERVER_ERROR'});
+
+    if (!response.ok) {
+      // Server returned an error before streaming started
+      let errMsg = 'Server error (' + response.status + ')';
+      try {
+        const json = await response.json();
+        errMsg = json.error || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
     }
-    scanData = json;
-    finishProgress(json);
-    renderAll(json);
-  }catch(e){
-    document.getElementById('progress-section').style.display='none';
-    showErr(e.message||'Scan failed. Please try again.', e.code);
-  }finally{
+
+    // Read the stream
+    const reader  = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk  = decoder.decode(value, { stream: true });
+      const events = parseSseChunk(chunk);
+
+      for (const event of events) {
+        handleStreamEvent(event);
+      }
+    }
+
+  } catch (e) {
+    document.getElementById('scanning-indicator').style.display = 'none';
+    showErr(e.message || 'Scan failed. Check your connection and try again.');
+  } finally {
     scanActive = false;
     document.getElementById('scan-btn').disabled = false;
   }
 }
 
-/* ════ Progress animation ════ */
-let progressTimer = null;
-function animateProgress(){
-  if(progressTimer) clearInterval(progressTimer);
-  const steps=[
-    [6,  'Analysing username pattern…',           'info'],
-    [14, 'Scanning Instagram, TikTok, Snapchat…', 'info'],
-    [22, 'Checking Facebook, Twitter/X, Threads…','info'],
-    [30, 'Querying GitHub, GitLab, Bitbucket…',   'info'],
-    [38, 'Scanning YouTube, Twitch, Vimeo…',      'info'],
-    [46, 'Checking Steam, Chess.com, Roblox…',    'info'],
-    [53, 'Scanning Spotify, SoundCloud, Last.fm…','info'],
-    [60, 'Checking Medium, Behance, Dribbble…',   'info'],
-    [67, 'Scanning Telegram, Ko-fi, Patreon…',    'info'],
-    [74, 'Running body-pattern verification…',    'info'],
-    [81, 'Applying confidence ratings…',          'info'],
-    [88, 'Building cross-platform data map…',     'info'],
-    [94, 'Generating Google Dork queries…',       'info'],
-    [98, 'Finalising report…',                    'info'],
-  ];
-  let i=0;
-  progressTimer = setInterval(()=>{
-    if(i>=steps.length){ clearInterval(progressTimer); return; }
-    const[p,msg,cls]=steps[i++];
-    setProg(p,msg);
-    addLog(msg,cls);
-  }, 430);
-}
-function setProg(p,msg){
-  document.getElementById('pbar').style.width=p+'%';
-  document.getElementById('pbar-track').setAttribute('aria-valuenow',p);
-  document.getElementById('prog-msg').textContent=msg;
-  document.getElementById('prog-pct').textContent=p+'%';
-}
-function addLog(msg,cls=''){
-  const log=document.getElementById('scan-log');
-  const d=document.createElement('div');
-  d.className='ll'+(cls?' l-'+cls:'');
-  const t=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  d.textContent=t+' │ '+msg;
-  log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
-}
-function finishProgress(data){
-  if(progressTimer) clearInterval(progressTimer);
-  setProg(100,'Scan complete');
-  data.platforms_found.forEach(p=>{
-    addLog('✓ '+p.platform+' found  ['+p.confidence+' confidence · '+p.response_time_ms+'ms]','found');
-  });
-  if(data.summary.error_count>0){
-    addLog(data.summary.error_count+' platform(s) could not be reached (see Errors tab)','warn');
+/* ═══════════════════════════════════════════
+   HANDLE EACH SSE EVENT
+═══════════════════════════════════════════ */
+function handleStreamEvent(event) {
+  if (!event || !event.type) return;
+
+  if (event.type === 'result') {
+    // ── Individual platform result ──
+    liveChecked = event.progress;
+    const p     = event.data;
+    const total = event.total;
+
+    // Update progress bar
+    const pct = Math.round((event.progress / total) * 100);
+    setProg(pct, 'Checking platforms… (' + event.progress + '/' + total + ')');
+
+    if (p.found) {
+      liveFound++;
+      foundPlatforms.push(p);
+
+      // Animate card into the Found grid
+      addFoundCard(p);
+
+      // Log the discovery
+      const timeStr = p.response_time_ms != null ? ' [' + p.response_time_ms + 'ms]' : '';
+      addLog('✓ ' + p.platform + '  · ' + p.confidence + ' confidence' + timeStr, 'found');
+
+      // Add category filter button if this is a new category
+      if (!categoriesSeen.has(p.category)) {
+        categoriesSeen.add(p.category);
+        addCategoryFilter(p.category);
+      }
+
+    } else if (p.error) {
+      liveErrors++;
+      errorPlatforms.push(p);
+      addLog('⚠ ' + p.platform + '  [' + p.error + ']', 'warn');
+    } else {
+      notFoundPlatforms.push(p);
+    }
+
+    // Live stat updates
+    bumpStat('s-found', liveFound);
+    const scoreVal = liveChecked > 0 ? Math.round((liveFound / liveChecked) * 100) + '%' : '—';
+    set('s-score',  scoreVal);
+    set('s-chk',    liveChecked);
+    bumpStat('s-err', liveErrors, true);
+    set('found-cnt', liveFound);
+    set('live-found-num', liveFound);
+
+    // Show/update error tab if needed
+    if (liveErrors > 0) {
+      document.getElementById('err-tab').style.display = '';
+      set('errs-cnt', liveErrors);
+    }
+
+  } else if (event.type === 'complete') {
+    // ── Final summary event ──
+    finishScan(event);
   }
-  addLog('Done — '+data.summary.found_count+' profile(s) found across '+data.summary.platforms_checked+' platforms','done');
 }
 
-/* ════ Render everything ════ */
-function renderAll(d){
-  document.getElementById('results-section').style.display='block';
+/* ═══════════════════════════════════════════
+   FINISH SCAN (called on "complete" event)
+═══════════════════════════════════════════ */
+function finishScan(event) {
+  // Mark progress as done
+  setProg(100, 'Scan complete ✓');
+  addLog('Done — ' + event.summary.found_count + ' profiles found across ' + event.summary.platforms_checked + ' platforms', 'done');
+  document.getElementById('prog-label').textContent = 'Scan complete';
+  const spinEl = document.getElementById('prog-spin');
+  spinEl.classList.add('done');
+  document.getElementById('scanning-indicator').style.display = 'none';
 
-  // Stats
-  set('s-found', d.summary.found_count);
-  set('s-score', d.summary.score+'%');
-  set('s-chk',   d.summary.platforms_checked);
-  set('s-err',   d.summary.error_count);
+  // Final stats
+  set('s-found', event.summary.found_count);
+  set('s-score', event.summary.score + '%');
+  set('s-chk',   event.summary.platforms_checked);
+  set('s-err',   event.summary.error_count);
+  set('found-cnt', event.summary.found_count);
+  set('live-found-num', event.summary.found_count);
 
   // Confidence bars
-  const tot=Math.max(d.summary.found_count,1);
-  const cb=d.summary.confidence_breakdown;
-  ['high','medium','low'].forEach(k=>{
-    const v=cb[k]||0;
-    const id=k==='medium'?'med':k;
-    document.getElementById('cb-'+id).style.width=(v/tot*100)+'%';
-    document.getElementById('cn-'+id).textContent=v;
+  const tot = Math.max(event.summary.found_count, 1);
+  const cb  = event.summary.confidence_breakdown;
+  ['high', 'medium', 'low'].forEach(k => {
+    const v  = cb[k] || 0;
+    const id = k === 'medium' ? 'med' : k;
+    document.getElementById('cb-' + id).style.width = ((v / tot) * 100) + '%';
+    document.getElementById('cn-' + id).textContent  = v;
   });
 
-  // Category filter buttons
-  const cats=[...new Set(d.platforms_found.map(p=>p.category))].sort();
-  const fb=document.getElementById('filter-bar');
-  // Remove old cat buttons (keep All + view switch)
-  fb.querySelectorAll('.fbtn:not(:first-child)').forEach(b=>b.remove());
-  const vsw=fb.querySelector('.vsw-group');
-  cats.forEach(c=>{
-    const b=document.createElement('button');
-    b.className='fbtn'; b.textContent=c;
-    b.onclick=()=>filterCat(c,b);
-    fb.insertBefore(b,vsw);
-  });
+  // Not Found grid
+  renderNF(event.platforms_not_found || []);
+  set('nf-cnt', event.summary.not_found_count);
 
-  set('found-cnt', d.summary.found_count);
-  renderFoundGrid(d.platforms_found);
-
-  renderLinked(d.linked_data);
-  renderAnalysis(d.username_analysis);
-
-  set('nf-cnt', d.summary.not_found_count);
-  renderNF(d.platforms_not_found);
-
-  // Errors tab
-  if(d.summary.error_count>0){
-    document.getElementById('err-tab').style.display='';
-    set('errs-cnt', d.summary.error_count);
-    renderErrors(d.platforms_error, d.summary.error_types||{});
+  // Errors grid
+  if (event.summary.error_count > 0) {
+    document.getElementById('err-tab').style.display = '';
+    set('errs-cnt', event.summary.error_count);
+    renderErrors(event.platforms_error || []);
   }
 
-  renderDorks(d.dork_urls);
+  // Linked data
+  renderLinked(event.linked_data || {});
+  set('linked-cnt', Object.keys(event.linked_data || {}).length);
 
-  setTimeout(()=>document.getElementById('results-section').scrollIntoView({behavior:'smooth'}),350);
+  // Username analysis
+  renderAnalysis(event.username_analysis || {});
+
+  // Dorks
+  renderDorks(event.dork_urls || []);
+
+  // Save full data for export
+  scanData = {
+    query:             event.query,
+    summary:           event.summary,
+    username_analysis: event.username_analysis,
+    platforms_found:   foundPlatforms,
+    platforms_not_found: event.platforms_not_found,
+    platforms_error:   event.platforms_error,
+    linked_data:       event.linked_data,
+    dork_urls:         event.dork_urls,
+  };
+
+  // Collapse progress section after a short delay
+  setTimeout(() => {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('results-section')
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('dork-section').style.display = 'block';
+  }, 1000);
 }
 
-/* ── Found grid ── */
-function renderFoundGrid(platforms){
-  const grid=document.getElementById('found-grid');
-  grid.innerHTML='';
-  if(!platforms.length){
-    grid.innerHTML='<div class="empty"><strong>—</strong>No profiles found for this username.</div>';
-    return;
-  }
-  platforms.forEach(p=>grid.appendChild(buildFoundCard(p)));
+/* ═══════════════════════════════════════════
+   ADD FOUND CARD (live, with animation)
+═══════════════════════════════════════════ */
+function addFoundCard(p) {
+  const grid  = document.getElementById('found-grid');
+  const empty = document.getElementById('found-empty');
+  if (empty) empty.remove();
+
+  const card = buildFoundCard(p);
+  card.classList.add('entering');
+  grid.appendChild(card);
+
+  // Clean up animation class when done
+  card.addEventListener('animationend', () => card.classList.remove('entering'), { once: true });
 }
-function buildFoundCard(p){
-  const card=document.createElement('div');
-  card.className='pcard found';
-  card.dataset.cat=p.category;
 
-  const dataKeys=Object.keys(p.data||{}).filter(k=>p.data[k]!=null&&p.data[k]!=='');
+function addCategoryFilter(cat) {
+  const fb  = document.getElementById('filter-bar');
+  const vsw = fb.querySelector('.vsw-group');
 
-  card.innerHTML=`
+  // Avoid duplicates
+  if ([...fb.querySelectorAll('.fbtn')].some(b => b.textContent === cat)) return;
+
+  const b        = document.createElement('button');
+  b.className    = 'fbtn';
+  b.textContent  = cat;
+  b.onclick      = () => filterCat(cat, b);
+  fb.insertBefore(b, vsw);
+}
+
+/* ═══════════════════════════════════════════
+   BUILD FOUND CARD HTML
+═══════════════════════════════════════════ */
+function buildFoundCard(p) {
+  const card = document.createElement('div');
+  card.className    = 'pcard found';
+  card.dataset.cat  = p.category;
+
+  const dataKeys = Object.keys(p.data || {}).filter(k => p.data[k] != null && p.data[k] !== '');
+
+  card.innerHTML = `
     <div class="pcard-header">
       <div class="pname">${p.icon} ${esc(p.platform)}</div>
       <span class="pstatus found">FOUND</span>
     </div>
     <div class="pcard-url">
       <a class="purl" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" title="${esc(p.url)}">${esc(p.url)}</a>
-      ${p.response_time_ms!=null?`<span class="ptime">${p.response_time_ms}ms</span>`:''}
+      ${p.response_time_ms != null ? `<span class="ptime">${p.response_time_ms}ms</span>` : ''}
     </div>
     <div class="pcard-tags">
-      <span class="conf-pill ${p.confidence}">${p.confidence.toUpperCase()}</span>
+      <span class="conf-pill ${esc(p.confidence)}">${esc(p.confidence.toUpperCase())}</span>
       <span class="cat-pill">${esc(p.category)}</span>
-      ${dataKeys.length?`<button class="expand-btn" onclick="toggleExpand(this)">▸ details</button>`:''}
+      ${dataKeys.length ? `<button class="expand-btn" onclick="toggleExpand(this)">▸ details</button>` : ''}
     </div>
-    ${dataKeys.length?`
+    ${dataKeys.length ? `
     <div class="pcard-data">
       <div class="data-grid">
-        ${dataKeys.slice(0,10).map(k=>`<div class="dk">${esc(k.replace(/_/g,' '))}</div><div class="dv" title="${esc(String(p.data[k]))}">${esc(String(p.data[k]))}</div>`).join('')}
+        ${dataKeys.slice(0, 10).map(k =>
+          `<div class="dk">${esc(k.replace(/_/g, ' '))}</div>
+           <div class="dv" title="${esc(String(p.data[k]))}">${esc(String(p.data[k]))}</div>`
+        ).join('')}
       </div>
-    </div>`:''}
+    </div>` : ''}
   `;
   return card;
 }
-function toggleExpand(btn){
-  const d=btn.closest('.pcard').querySelector('.pcard-data');
-  if(!d)return;
+
+function toggleExpand(btn) {
+  const d = btn.closest('.pcard').querySelector('.pcard-data');
+  if (!d) return;
   d.classList.toggle('open');
-  btn.textContent=d.classList.contains('open')?'▾ hide':'▸ details';
+  btn.textContent = d.classList.contains('open') ? '▾ hide' : '▸ details';
 }
 
-/* ── Filter & view ── */
-function filterCat(cat,btn){
-  document.querySelectorAll('#filter-bar .fbtn').forEach(b=>b.classList.remove('on'));
+/* ═══════════════════════════════════════════
+   FILTER & VIEW
+═══════════════════════════════════════════ */
+function filterCat(cat, btn) {
+  document.querySelectorAll('#filter-bar .fbtn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  document.querySelectorAll('#found-grid .pcard').forEach(c=>{
-    c.style.display=(cat==='all'||c.dataset.cat===cat)?'':'none';
+  document.querySelectorAll('#found-grid .pcard').forEach(c => {
+    c.style.display = (cat === 'all' || c.dataset.cat === cat) ? '' : 'none';
   });
 }
-function setView(v,btn){
-  document.querySelectorAll('.vsw').forEach(b=>b.classList.remove('on'));
+
+function setView(v, btn) {
+  document.querySelectorAll('.vsw').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById('found-grid').classList.toggle('list',v==='list');
+  document.getElementById('found-grid').classList.toggle('list', v === 'list');
 }
 
-/* ── Linked data ── */
-function renderLinked(ld){
-  const list=document.getElementById('linked-list');
-  const keys=Object.keys(ld||{});
-  set('linked-cnt',keys.length);
-  if(!keys.length){
-    list.innerHTML='<div class="empty"><strong>—</strong>No shared data fields found across platforms.</div>';
+/* ═══════════════════════════════════════════
+   RENDER LINKED DATA
+═══════════════════════════════════════════ */
+function renderLinked(ld) {
+  const list = document.getElementById('linked-list');
+  const keys  = Object.keys(ld || {});
+
+  if (!keys.length) {
+    list.innerHTML = '<div class="empty"><strong>—</strong>No shared data fields found across platforms.</div>';
     return;
   }
-  list.innerHTML='';
-  keys.forEach(k=>{
-    const item=document.createElement('div');
-    item.className='linked-item';
-    const vals=ld[k];
-    item.innerHTML=`
-      <div class="lkey">${k.replace(/_/g,' ')}</div>
+
+  list.innerHTML = '';
+  keys.forEach(k => {
+    const item = document.createElement('div');
+    item.className = 'linked-item';
+    const vals = ld[k];
+    item.innerHTML = `
+      <div class="lkey">${esc(k.replace(/_/g, ' '))}</div>
       <div class="lvals">
-        ${vals.map(v=>`
+        ${vals.map(v => `
           <div class="ltag-wrap">
             <div class="ltag">${esc(String(v.value))}</div>
             <div class="lsrc">${esc(v.source)}</div>
@@ -1273,105 +1336,105 @@ function renderLinked(ld){
   });
 }
 
-/* ── Analysis ── */
-function renderAnalysis(a){
-  const c=document.getElementById('analysis-tags');
-  c.innerHTML='';
-  const tags=[
-    {label:'Length', val:a.length+' chars',  cls: a.length>=4&&a.length<=20?'on':''},
-    {label:'Numbers', val:a.has_numbers?'Yes':'No', cls:a.has_numbers?'on':''},
-    {label:'Underscores', val:a.has_underscores?'Yes':'No', cls:a.has_underscores?'on':''},
-    {label:'Dots', val:a.has_dots?'Yes':'No', cls:a.has_dots?'on':''},
-    {label:'Hyphens', val:a.has_hyphens?'Yes':'No', cls:a.has_hyphens?'on':''},
-    {label:'All lowercase', val:a.all_lowercase?'Yes':'No', cls:a.all_lowercase?'on':''},
-    {label:'Mixed case', val:a.mixed_case?'Yes':'No', cls:a.mixed_case?'on':''},
-    a.possible_birth_year ? {label:'Birth year?', val:a.possible_birth_year, cls:'warn'} : null,
-    a.suffix_digits       ? {label:'Suffix digits', val:a.suffix_digits, cls:'info'} : null,
-    a.possible_real_name  ? {label:'Real name pattern', val:'Likely', cls:'warn'} : null,
-    a.common_pattern      ? {label:'Pattern', val:a.common_pattern, cls:'info'} : null,
+/* ═══════════════════════════════════════════
+   RENDER USERNAME ANALYSIS
+═══════════════════════════════════════════ */
+function renderAnalysis(a) {
+  const c = document.getElementById('analysis-tags');
+  c.innerHTML = '';
+  if (!a || !Object.keys(a).length) return;
+
+  const tags = [
+    { label: 'Length',        val: a.length + ' chars',        cls: (a.length >= 4 && a.length <= 20) ? 'on' : '' },
+    { label: 'Numbers',       val: a.has_numbers  ? 'Yes' : 'No', cls: a.has_numbers  ? 'on' : '' },
+    { label: 'Underscores',   val: a.has_underscores ? 'Yes' : 'No', cls: a.has_underscores ? 'on' : '' },
+    { label: 'Dots',          val: a.has_dots     ? 'Yes' : 'No', cls: a.has_dots     ? 'on' : '' },
+    { label: 'Hyphens',       val: a.has_hyphens  ? 'Yes' : 'No', cls: a.has_hyphens  ? 'on' : '' },
+    { label: 'All lowercase', val: a.all_lowercase ? 'Yes' : 'No', cls: a.all_lowercase ? 'on' : '' },
+    { label: 'Mixed case',    val: a.mixed_case    ? 'Yes' : 'No', cls: a.mixed_case    ? 'on' : '' },
+    a.possible_birth_year ? { label: 'Birth year?', val: a.possible_birth_year, cls: 'warn' } : null,
+    a.common_suffix_digits ? { label: 'Suffix digits', val: a.common_suffix_digits, cls: 'info' } : null,
+    a.possible_real_name   ? { label: 'Real name pattern', val: 'Likely', cls: 'warn' } : null,
   ].filter(Boolean);
-  tags.forEach(({label,val,cls})=>{
-    const t=document.createElement('div');
-    t.className='atag'+(cls?' '+cls:'');
-    t.textContent=label+': '+val;
+
+  tags.forEach(({ label, val, cls }) => {
+    const t        = document.createElement('div');
+    t.className    = 'atag' + (cls ? ' ' + cls : '');
+    t.textContent  = label + ': ' + val;
     c.appendChild(t);
   });
 }
 
-/* ── Not found ── */
-function renderNF(platforms){
-  const grid=document.getElementById('nf-grid');
-  grid.innerHTML='';
-  platforms.forEach(p=>{
-    const c=document.createElement('div');
-    c.className='nf-card';
-    c.innerHTML=`<div class="nf-dot"></div><div class="nf-name" title="${esc(p.platform)}">${p.icon} ${esc(p.platform)}</div>`;
+/* ═══════════════════════════════════════════
+   RENDER NOT FOUND
+═══════════════════════════════════════════ */
+function renderNF(platforms) {
+  const grid = document.getElementById('nf-grid');
+  grid.innerHTML = '';
+  platforms.forEach(p => {
+    const c = document.createElement('div');
+    c.className = 'nf-card';
+    c.innerHTML = `<div class="nf-dot"></div><div class="nf-name" title="${esc(p.platform)}">${esc(p.icon)} ${esc(p.platform)}</div>`;
     grid.appendChild(c);
   });
 }
 
-/* ── Errors ── */
-function renderErrors(platforms, types){
-  // Error type summary
-  const sumEl=document.getElementById('error-type-summary');
-  if(Object.keys(types).length){
-    const rows=Object.entries(types).map(([k,v])=>`
-      <div class="err-type-row">
-        <span>${k.replace(/_/g,' ')}</span>
-        <span>${v} platform${v>1?'s':''}</span>
-      </div>`).join('');
-    sumEl.innerHTML=`<div class="error-summary"><div class="error-summary-title">Error breakdown</div>${rows}</div>`;
-  }
-  const grid=document.getElementById('err-grid');
-  grid.innerHTML='';
-  platforms.forEach(p=>{
-    const card=document.createElement('div');
-    card.className='pcard';
-    card.innerHTML=`
+/* ═══════════════════════════════════════════
+   RENDER ERRORS
+═══════════════════════════════════════════ */
+function renderErrors(platforms) {
+  const grid = document.getElementById('err-grid');
+  grid.innerHTML = '';
+  platforms.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pcard';
+    card.innerHTML = `
       <div class="pcard-header">
-        <div class="pname">${p.icon} ${esc(p.platform)}</div>
+        <div class="pname">${esc(p.icon)} ${esc(p.platform)}</div>
         <span class="pstatus err">ERROR</span>
       </div>
       <div class="pcard-tags">
         <span class="cat-pill">${esc(p.category)}</span>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${esc(p.error||'unknown')}</span>
-      </div>
-      ${p.error_detail?`<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${esc(p.error_detail)}</div>`:''}
-    `;
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${esc(p.error || 'unknown')}</span>
+      </div>`;
     grid.appendChild(card);
   });
 }
 
-/* ── Dorks ── */
-function renderDorks(dorks){
-  if(!dorks||!dorks.length) return;
-  document.getElementById('dork-section').style.display='block';
+/* ═══════════════════════════════════════════
+   RENDER DORKS — with group headers + Google/Bing/DDG buttons
+═══════════════════════════════════════════ */
+function renderDorks(dorks) {
+  if (!dorks || !dorks.length) return;
+  document.getElementById('dork-section').style.display = 'block';
   set('dork-cnt', dorks.length);
 
-  // Group them
-  const groups={};
-  dorks.forEach(d=>{
-    if(!groups[d.group]) groups[d.group]=[];
-    groups[d.group].push(d);
+  // Group dorks by their group field
+  const groups = {};
+  dorks.forEach(d => {
+    const g = d.group || 'Other';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(d);
   });
 
-  const container=document.getElementById('dork-content');
-  container.innerHTML='';
+  const container = document.getElementById('dork-content');
+  container.innerHTML = '';
 
-  Object.entries(groups).forEach(([gname,items])=>{
-    const gtitle=document.createElement('div');
-    gtitle.className='dork-group-title';
-    gtitle.textContent=gname;
+  Object.entries(groups).forEach(([gname, items]) => {
+    const gtitle       = document.createElement('div');
+    gtitle.className   = 'dork-group-title';
+    gtitle.textContent = gname;
     container.appendChild(gtitle);
 
-    const grid=document.createElement('div');
-    grid.className='dork-grid';
-    items.forEach(d=>{
-      const card=document.createElement('div');
-      card.className='dork-card';
-      card.innerHTML=`
+    const grid     = document.createElement('div');
+    grid.className = 'dork-grid';
+
+    items.forEach(d => {
+      const card       = document.createElement('div');
+      card.className   = 'dork-card';
+      card.innerHTML   = `
         <div class="dork-top">
-          <div class="dork-icon">${d.icon}</div>
+          <div class="dork-icon">${esc(d.icon)}</div>
           <div class="dork-lbl">${esc(d.label)}</div>
         </div>
         <div class="dork-desc">${esc(d.desc)}</div>
@@ -1380,95 +1443,213 @@ function renderDorks(dorks){
           <a class="dork-btn g" href="${esc(d.google)}" target="_blank" rel="noopener noreferrer">🔍 Google</a>
           <a class="dork-btn b" href="${esc(d.bing)}"   target="_blank" rel="noopener noreferrer">🔷 Bing</a>
           <a class="dork-btn d" href="${esc(d.ddg)}"    target="_blank" rel="noopener noreferrer">🦆 DDG</a>
-        </div>
-      `;
+        </div>`;
       grid.appendChild(card);
     });
+
     container.appendChild(grid);
   });
 }
 
-/* ════ Tab switching ════ */
-function showTab(id,btn){
-  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('on');t.setAttribute('aria-selected','false')});
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.remove('on');
+    t.setAttribute('aria-selected', 'false');
+  });
   document.getElementById(id).classList.add('on');
   btn.classList.add('on');
-  btn.setAttribute('aria-selected','true');
+  btn.setAttribute('aria-selected', 'true');
 }
 
-/* ════ JSON export ════ */
-function dlJSON(){
-  if(!scanData) return;
-  const b=new Blob([JSON.stringify(scanData,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(b);
-  a.download='osint_'+scanData.query.username+'_'+Date.now()+'.json';
+/* ═══════════════════════════════════════════
+   PROGRESS HELPERS
+═══════════════════════════════════════════ */
+function setProg(pct, msg) {
+  const bar = document.getElementById('pbar');
+  const trk = document.getElementById('pbar-track');
+  bar.style.width = pct + '%';
+  trk.setAttribute('aria-valuenow', pct);
+  document.getElementById('prog-msg').textContent  = msg;
+  document.getElementById('prog-pct').textContent  = pct + '%';
+  if (pct >= 5) document.getElementById('prog-label').textContent = 'Scanning platforms…';
+}
+
+function addLog(msg, cls) {
+  const log = document.getElementById('scan-log');
+  const d   = document.createElement('div');
+  d.className   = 'll' + (cls ? ' l-' + cls : '');
+  const t = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  d.textContent = t + ' │ ' + msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ═══════════════════════════════════════════
+   STAT BUMP ANIMATION
+═══════════════════════════════════════════ */
+function bumpStat(id, val, onlyIfNonzero) {
+  if (onlyIfNonzero && val === 0) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  el.classList.remove('num-bump');
+  // Force reflow so animation re-triggers
+  void el.offsetWidth;
+  el.classList.add('num-bump');
+}
+
+/* ═══════════════════════════════════════════
+   JSON EXPORT
+═══════════════════════════════════════════ */
+function dlJSON() {
+  if (!scanData) return;
+  const b = new Blob([JSON.stringify(scanData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(b);
+  a.download = 'osint_' + (scanData.query?.username || 'scan') + '_' + Date.now() + '.json';
   a.click();
+  URL.revokeObjectURL(a.href);
   toast('JSON report downloaded ✓');
 }
-function cpJSON(){
-  if(!scanData) return;
-  navigator.clipboard.writeText(JSON.stringify(scanData,null,2))
-    .then(()=>toast('JSON copied to clipboard ✓'))
-    .catch(()=>toast('Copy failed — use Download instead'));
+
+function cpJSON() {
+  if (!scanData) return;
+  navigator.clipboard.writeText(JSON.stringify(scanData, null, 2))
+    .then(() => toast('JSON copied to clipboard ✓'))
+    .catch(() => toast('Copy failed — use Download instead'));
 }
 
-/* ════ Reset ════ */
-function resetTool(){
-  scanData=null;
-  inp.value='';
+/* ═══════════════════════════════════════════
+   RESET TOOL
+═══════════════════════════════════════════ */
+function resetTool() {
+  scanData        = null;
+  liveFound       = 0;
+  liveChecked     = 0;
+  liveErrors      = 0;
+  foundPlatforms  = [];
+  notFoundPlatforms = [];
+  errorPlatforms  = [];
+  categoriesSeen  = new Set();
+  sseBuffer       = '';
+
+  inp.value = '';
   inp.classList.remove('err');
   inpErr.classList.remove('show');
-  ['progress-section','results-section','dork-section'].forEach(id=>
-    document.getElementById(id).style.display='none');
   closeErr();
-  // Reset filter bar
-  document.querySelectorAll('#filter-bar .fbtn:not(:first-child)').forEach(b=>b.remove());
-  document.querySelector('#filter-bar .fbtn').classList.add('on');
-  window.scrollTo({top:0,behavior:'smooth'});
+
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('results-section').style.display  = 'none';
+  document.getElementById('dork-section').style.display     = 'none';
+
+  resetResultsUI();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   inp.focus();
 }
 
-/* ════ Error banner ════ */
-function showErr(msg, code){
-  const banner=document.getElementById('err-banner');
-  const titles={
-    MISSING_USERNAME:'No username entered',
-    INVALID_CHARS:'Invalid username characters',
-    TOO_LONG:'Username too long',
-    SERVER_ERROR:'Server error',
-    DEFAULT:'Scan failed'
-  };
-  document.getElementById('err-title').textContent=titles[code]||titles.DEFAULT;
-  document.getElementById('err-msg').textContent=msg;
-  banner.classList.add('show');
-  banner.scrollIntoView({behavior:'smooth',block:'center'});
+function resetResultsUI() {
+  // Stats
+  set('s-found', '0');
+  set('s-score', '—');
+  set('s-chk',   '0');
+  set('s-err',   '0');
+  set('found-cnt', '0');
+  set('nf-cnt',    '0');
+  set('errs-cnt',  '0');
+  set('linked-cnt','0');
+  set('dork-cnt',  '0');
+
+  // Confidence bars
+  ['high', 'med', 'low'].forEach(k => {
+    const bar = document.getElementById('cb-' + k);
+    if (bar) bar.style.width = '0%';
+    const val = document.getElementById('cn-' + (k === 'med' ? 'med' : k));
+    if (val) val.textContent = '0';
+  });
+
+  // Found grid
+  document.getElementById('found-grid').innerHTML =
+    '<div class="empty" id="found-empty" style="grid-column:1/-1"><strong>—</strong>Waiting for results…</div>';
+
+  // Other grids
+  document.getElementById('nf-grid').innerHTML  = '';
+  document.getElementById('err-grid').innerHTML = '';
+  document.getElementById('linked-list').innerHTML = '<div class="empty"><strong>—</strong>No shared data fields found yet.</div>';
+  document.getElementById('analysis-tags').innerHTML = '';
+  document.getElementById('dork-content').innerHTML  = '';
+
+  // Filter bar — remove category buttons, keep All
+  const fb = document.getElementById('filter-bar');
+  fb.querySelectorAll('.fbtn:not(:first-child)').forEach(b => b.remove());
+  const allBtn = fb.querySelector('.fbtn');
+  if (allBtn) allBtn.classList.add('on');
+
+  // View switches
+  document.querySelectorAll('.vsw').forEach((b, i) => b.classList.toggle('on', i === 0));
+  const grid = document.getElementById('found-grid');
+  if (grid) grid.classList.remove('list');
+
+  // Progress
+  document.getElementById('pbar').style.width          = '0%';
+  document.getElementById('prog-msg').textContent       = 'Connecting…';
+  document.getElementById('prog-pct').textContent       = '0%';
+  document.getElementById('prog-label').textContent     = 'Initialising scan…';
+  document.getElementById('scan-log').innerHTML         = '';
+  document.getElementById('prog-spin').classList.remove('done');
+  document.getElementById('live-found-num').textContent = '0';
+
+  // Error tab
+  document.getElementById('err-tab').style.display = 'none';
+
+  // Switch to Found tab
+  showTab('pane-found', document.querySelector('.tabs .tab'));
 }
-function closeErr(){
+
+/* ═══════════════════════════════════════════
+   ERROR BANNER
+═══════════════════════════════════════════ */
+function showErr(msg) {
+  document.getElementById('err-title').textContent = 'Scan failed';
+  document.getElementById('err-msg').textContent   = ' ' + (msg || 'Unknown error. Please try again.');
+  const banner = document.getElementById('err-banner');
+  banner.classList.add('show');
+  banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function closeErr() {
   document.getElementById('err-banner').classList.remove('show');
 }
 
-/* ════ Enter key ════ */
-inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!scanActive) startScan()});
-
-/* ════ Toast ════ */
-let toastTimer=null;
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
   t.classList.add('show');
-  if(toastTimer) clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),3200);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-/* ════ Utils ════ */
-function set(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
-function esc(s){
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 </script>
 </body>
