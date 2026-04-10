@@ -1,36 +1,41 @@
 """
-OSINT Scanner v5 (Async + aiohttp)
-Platforms: Instagram, TikTok, Snapchat, Facebook, Threads, YouTube
-Method: Asynchronous aiohttp, og:meta parsing, multiple confirmation signals
-Timeout: All requests finish within ~6 seconds total (concurrent)
-Ethics: Public profile URLs only. No authentication bypass.
+OSINT Scanner v3 — Production Backend
+──────────────────────────────────────
+Ethical: public URLs + official open APIs only.
+Anti-detection: rotating User-Agents, per-domain delays, realistic headers,
+                chunked concurrency so we don't blast 40 requests at once.
 """
 
-import re
 import asyncio
 import aiohttp
-from urllib.parse import quote_plus
+import json
+import time
+import re
+import random
+import hashlib
 from datetime import datetime, timezone
+from urllib.parse import quote_plus
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
 CORS(app)
 
-# ----------------------------------------------------------------------
-#  Browser-realistic headers (rotated per request)
-# ----------------------------------------------------------------------
+# ══════════════════════════════════════════════════════════════════════
+# Rotating User-Agents — realistic browser strings
+# ══════════════════════════════════════════════════════════════════════
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
 ]
 
-def _headers():
+def get_headers():
     return {
-        "User-Agent": USER_AGENTS[hash(datetime.now()) % len(USER_AGENTS)],
+        "User-Agent": random.choice(USER_AGENTS),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
@@ -40,329 +45,966 @@ def _headers():
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
         "Cache-Control": "max-age=0",
     }
 
-# ----------------------------------------------------------------------
-#  HTML helpers – extract meta tags, titles, etc.
-# ----------------------------------------------------------------------
-def _meta(html: str, prop: str) -> str:
-    patterns = [
-        rf'<meta[^>]+property=["\']og:{re.escape(prop)}["\'][^>]+content=["\']([^"\']+)["\']',
-        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:{re.escape(prop)}["\']',
-        rf'<meta[^>]+name=["\']{re.escape(prop)}["\'][^>]+content=["\']([^"\']+)["\']',
-        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']{re.escape(prop)}["\']',
-    ]
-    for pat in patterns:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
-    return ""
+# ══════════════════════════════════════════════════════════════════════
+# Platform Registry
+# Fields:
+#   url           — profile URL ({u} = username)
+#   api           — optional public JSON API
+#   not_found_codes — HTTP codes = no account
+#   body_miss     — text in body that means "not found" (200 but gone)
+#   body_hit      — text that MUST be in body for confirmed match
+#   confidence    — base confidence level
+#   category / icon
+#   note          — optional user-facing note
+# ══════════════════════════════════════════════════════════════════════
+PLATFORMS = {
 
-def _title(html: str) -> str:
-    m = re.search(r"<title[^>]*>([^<]+)</title>", html, re.IGNORECASE)
-    return m.group(1).strip() if m else ""
+    # ── Social ──────────────────────────────────────────────────────
+    "Instagram": {
+        "url": "https://www.instagram.com/{u}/",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Sorry, this page isn't available.",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Social",
+        "icon": "📸",
+    },
+    "TikTok": {
+        "url": "https://www.tiktok.com/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "couldn't find this account",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Social",
+        "icon": "🎵",
+    },
+    "Snapchat": {
+        "url": "https://www.snapchat.com/add/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": '"username":"',
+        "confidence": "high",
+        "category": "Social",
+        "icon": "👻",
+    },
+    "Facebook": {
+        "url": "https://www.facebook.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "This content isn't available right now",
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "🔵",
+    },
+    "Twitter / X": {
+        "url": "https://twitter.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "This account doesn't exist",
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "𝕏",
+    },
+    "Threads": {
+        "url": "https://www.threads.net/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "🧵",
+    },
+    "Pinterest": {
+        "url": "https://www.pinterest.com/{u}/",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "📌",
+    },
+    "Tumblr": {
+        "url": "https://{u}.tumblr.com",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "There's nothing here.",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Social",
+        "icon": "🟦",
+    },
+    "Mastodon": {
+        "url": "https://mastodon.social/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "🐘",
+    },
+    "Bluesky": {
+        "url": "https://bsky.app/profile/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Social",
+        "icon": "🦋",
+    },
 
-def _clean(text: str) -> str:
-    text = re.sub(r"&amp;", "&", text)
-    text = re.sub(r"&quot;", '"', text)
-    text = re.sub(r"&#39;|&apos;", "'", text)
-    text = re.sub(r"&lt;", "<", text)
-    text = re.sub(r"&gt;", ">", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    # ── Professional ─────────────────────────────────────────────────
+    "LinkedIn": {
+        "url": "https://www.linkedin.com/in/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Page not found",
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Professional",
+        "icon": "💼",
+    },
+    "AngelList": {
+        "url": "https://angel.co/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Professional",
+        "icon": "👼",
+    },
 
-def _followers_from_desc(desc: str) -> str:
-    m = re.search(r"([\d,\.]+(?:[KkMm])?)\s+(?:Followers|followers|fans)", desc)
-    return m.group(1) if m else ""
+    # ── Video / Streaming ────────────────────────────────────────────
+    "YouTube": {
+        "url": "https://www.youtube.com/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "This page isn't available",
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Video",
+        "icon": "▶️",
+    },
+    "Twitch": {
+        "url": "https://www.twitch.tv/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Video",
+        "icon": "🟣",
+    },
+    "Vimeo": {
+        "url": "https://vimeo.com/{u}",
+        "api": "https://vimeo.com/api/oembed.json?url=https://vimeo.com/{u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Video",
+        "icon": "🎬",
+    },
+    "Dailymotion": {
+        "url": "https://www.dailymotion.com/{u}",
+        "api": "https://api.dailymotion.com/user/{u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Video",
+        "icon": "📹",
+    },
+    "Rumble": {
+        "url": "https://rumble.com/c/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Video",
+        "icon": "🎥",
+    },
 
-async def _fetch_text(session: aiohttp.ClientSession, url: str, timeout: int = 5) -> tuple[int, str, str]:
-    """Fetch URL, return (status, final_url, body_text)."""
-    try:
-        async with session.get(url, headers=_headers(), timeout=aiohttp.ClientTimeout(total=timeout), allow_redirects=True) as resp:
-            final_url = str(resp.url)
-            body = await resp.text(limit=50000, encoding="utf-8", errors="ignore")
-            return resp.status, final_url, body
-    except Exception:
-        return 0, url, ""
+    # ── Dev & Code ───────────────────────────────────────────────────
+    "GitHub": {
+        "url": "https://github.com/{u}",
+        "api": "https://api.github.com/users/{u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": 'data-hovercard-type="user"',
+        "confidence": "high",
+        "category": "Dev",
+        "icon": "💻",
+    },
+    "GitLab": {
+        "url": "https://gitlab.com/{u}",
+        "api": "https://gitlab.com/api/v4/users?username={u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "🦊",
+    },
+    "Stack Overflow": {
+        "url": "https://stackoverflow.com/users/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Page Not Found",
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "📚",
+    },
+    "NPM": {
+        "url": "https://www.npmjs.com/~{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "📦",
+    },
+    "PyPI": {
+        "url": "https://pypi.org/user/{u}/",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "🐍",
+    },
+    "Replit": {
+        "url": "https://replit.com/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Page not found",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Dev",
+        "icon": "♻️",
+    },
+    "CodePen": {
+        "url": "https://codepen.io/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "🖊️",
+    },
+    "Bitbucket": {
+        "url": "https://bitbucket.org/{u}/",
+        "api": "https://api.bitbucket.org/2.0/users/{u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Dev",
+        "icon": "🪣",
+    },
 
-# ----------------------------------------------------------------------
-#  Platform checkers (async)
-# ----------------------------------------------------------------------
-async def check_instagram(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.instagram.com/{username}/"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
+    # ── Music ────────────────────────────────────────────────────────
+    "Spotify": {
+        "url": "https://open.spotify.com/user/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Music",
+        "icon": "🎧",
+    },
+    "SoundCloud": {
+        "url": "https://soundcloud.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "We can't find that user.",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Music",
+        "icon": "🔊",
+    },
+    "Last.fm": {
+        "url": "https://www.last.fm/user/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "User not found",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Music",
+        "icon": "🎼",
+    },
+    "Bandcamp": {
+        "url": "https://bandcamp.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Music",
+        "icon": "🎸",
+    },
 
-    # Not found signals
-    if status == 404 or "sorry, this page isn't available" in low:
-        return _result("Instagram", url, False, "high", ms=None, profile_url=None)
-    if "this account is private" in low:
-        return _result("Instagram", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": username, "bio": "Private account", "status": "private"})
+    # ── Gaming ───────────────────────────────────────────────────────
+    "Steam": {
+        "url": "https://steamcommunity.com/id/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "The specified profile could not be found.",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Gaming",
+        "icon": "🎮",
+    },
+    "Roblox": {
+        "url": "https://www.roblox.com/user.aspx?username={u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Gaming",
+        "icon": "🧱",
+    },
+    "Chess.com": {
+        "url": "https://www.chess.com/member/{u}",
+        "api": "https://api.chess.com/pub/player/{u}",
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Gaming",
+        "icon": "♟️",
+    },
+    "Minecraft": {
+        "url": "https://namemc.com/profile/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Profile Not Found",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Gaming",
+        "icon": "⛏️",
+    },
 
-    og_title = _clean(_meta(body, "title"))
-    if og_title and f"@{username.lower()}" in og_title.lower():
-        name = og_title.split("(")[0].strip()
-        return _result("Instagram", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": name, "bio": _clean(_meta(body, "description"))[:200]})
-    return _result("Instagram", url, False, "high", ms=None, profile_url=None)
+    # ── Creative ─────────────────────────────────────────────────────
+    "Medium": {
+        "url": "https://medium.com/@{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Page not found",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Creative",
+        "icon": "✍️",
+    },
+    "Behance": {
+        "url": "https://www.behance.net/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "🎨",
+    },
+    "Dribbble": {
+        "url": "https://dribbble.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": "Whoops, that page is gone.",
+        "body_hit": None,
+        "confidence": "high",
+        "category": "Creative",
+        "icon": "🏀",
+    },
+    "DeviantArt": {
+        "url": "https://www.deviantart.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "🖼️",
+    },
+    "Flickr": {
+        "url": "https://www.flickr.com/people/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "📷",
+    },
+    "Wattpad": {
+        "url": "https://www.wattpad.com/user/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "📖",
+    },
+    "Patreon": {
+        "url": "https://www.patreon.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "🎁",
+    },
+    "Ko-fi": {
+        "url": "https://ko-fi.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "☕",
+    },
 
-async def check_tiktok(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.tiktok.com/@{username}"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
-    if status == 404 or "couldn't find this account" in low or "this account doesn't exist" in low:
-        return _result("TikTok", url, False, "high", ms=None, profile_url=None)
-    og_title = _clean(_meta(body, "title"))
-    if og_title and f"@{username.lower()}" in og_title.lower():
-        name = og_title.split("(")[0].split("@")[0].strip()
-        return _result("TikTok", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": name, "bio": _clean(_meta(body, "description"))[:200]})
-    return _result("TikTok", url, False, "high", ms=None, profile_url=None)
+    # ── Messaging / Community ────────────────────────────────────────
+    "Telegram": {
+        "url": "https://t.me/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": "tgme_page_title",
+        "confidence": "high",
+        "category": "Messaging",
+        "icon": "✈️",
+    },
 
-async def check_snapchat(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.snapchat.com/add/{username}"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
-    if status == 404 or "sorry, we couldn't find" in low or "profile not found" in low:
-        return _result("Snapchat", url, False, "high", ms=None, profile_url=None)
-    # Look for username in JSON-LD or meta
-    if f'"username":"{username.lower()}"' in low or f"snapchat.com/add/{username.lower()}" in low:
-        og_title = _clean(_meta(body, "title"))
-        name = og_title.replace("'s Snapchat", "").strip()
-        return _result("Snapchat", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": name or username})
-    return _result("Snapchat", url, False, "high", ms=None, profile_url=None)
+    # ── Q&A / Forums ─────────────────────────────────────────────────
+    "Quora": {
+        "url": "https://www.quora.com/profile/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Forums",
+        "icon": "❓",
+    },
 
-async def check_facebook(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.facebook.com/{username}"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
-    if "login" in final_url or "checkpoint" in final_url:
-        return _result("Facebook", url, False, None, ms=None, profile_url=None,
-                       note="Facebook redirected to login. Cannot verify.")
-    if status == 404:
-        return _result("Facebook", url, False, "high", ms=None, profile_url=None)
-    og_title = _clean(_meta(body, "title"))
-    if og_title and og_title.lower() not in ("facebook", "log in or sign up | facebook", ""):
-        if username.lower() in og_title.lower():
-            return _result("Facebook", url, True, "medium", ms=None, profile_url=final_url,
-                           data={"display_name": og_title.split("|")[0].strip()})
-    return _result("Facebook", url, False, "medium", ms=None, profile_url=None,
-                   note="Could not confirm profile. Facebook restricts public access.")
+    # ── Shopping ─────────────────────────────────────────────────────
+    "Etsy": {
+        "url": "https://www.etsy.com/shop/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Shopping",
+        "icon": "🛍️",
+    },
+    "eBay": {
+        "url": "https://www.ebay.com/usr/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Shopping",
+        "icon": "🛒",
+    },
 
-async def check_threads(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.threads.net/@{username}"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
-    if status == 404 or "page not found" in low or "this page doesn't exist" in low:
-        return _result("Threads", url, False, "high", ms=None, profile_url=None)
-    og_title = _clean(_meta(body, "title"))
-    if og_title and f"@{username.lower()}" in og_title.lower():
-        name = og_title.split("(")[0].split("•")[0].strip()
-        return _result("Threads", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": name, "bio": _clean(_meta(body, "description"))[:200]})
-    return _result("Threads", url, False, "high", ms=None, profile_url=None)
-
-async def check_youtube(username: str, session: aiohttp.ClientSession) -> dict:
-    url = f"https://www.youtube.com/@{username}"
-    status, final_url, body = await _fetch_text(session, url)
-    low = body.lower()
-    if status == 404 or "this page isn't available" in low or "this channel doesn't exist" in low:
-        return _result("YouTube", url, False, "high", ms=None, profile_url=None)
-    og_title = _clean(_meta(body, "title")) or _clean(_title(body))
-    if og_title and og_title.lower() not in ("youtube", ""):
-        subs = ""
-        desc = _clean(_meta(body, "description"))
-        m = re.search(r"([\d,\.]+(?:\s?[KkMmBb])?)\s+subscribers", desc, re.IGNORECASE)
-        if m:
-            subs = m.group(1)
-        return _result("YouTube", url, True, "high", ms=None, profile_url=final_url,
-                       data={"display_name": og_title.replace(" - YouTube", "").strip(),
-                             "subscribers": subs, "bio": desc[:200]})
-    return _result("YouTube", url, False, "high", ms=None, profile_url=None)
-
-def _result(platform, url, found, confidence, ms=None, profile_url=None, data=None, error=None, note=None):
-    return {
-        "platform": platform,
-        "url": url,
-        "found": found,
-        "confidence": confidence,
-        "profile_url": profile_url if found else None,
-        "data": data or {},
-        "error": error,
-        "ms": ms,
-        "note": note,
-    }
-
-# ----------------------------------------------------------------------
-#  Platform registry
-# ----------------------------------------------------------------------
-CHECKERS = {
-    "Instagram": check_instagram,
-    "TikTok": check_tiktok,
-    "Snapchat": check_snapchat,
-    "Facebook": check_facebook,
-    "Threads": check_threads,
-    "YouTube": check_youtube,
+    # ── Portfolio / Bio links ────────────────────────────────────────
+    "About.me": {
+        "url": "https://about.me/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_miss": None,
+        "body_hit": None,
+        "confidence": "medium",
+        "category": "Portfolio",
+        "icon": "👤",
+    },
 }
-ICONS = {"Instagram": "📸", "TikTok": "🎵", "Snapchat": "👻", "Facebook": "🔵", "Threads": "🧵", "YouTube": "▶️"}
-COLORS = {"Instagram": "#e1306c", "TikTok": "#ff0050", "Snapchat": "#fffc00", "Facebook": "#1877f2", "Threads": "#101010", "YouTube": "#ff0000"}
 
-# ----------------------------------------------------------------------
-#  Username analysis (unchanged)
-# ----------------------------------------------------------------------
-def analyse(u: str) -> dict:
-    out = {
-        "length": len(u),
-        "has_numbers": bool(re.search(r"\d", u)),
-        "has_dots": "." in u,
-        "has_underscores": "_" in u,
-        "all_lowercase": u.islower(),
-        "mixed_case": not u.islower() and not u.isupper() and bool(re.search(r"[a-zA-Z]", u)),
-        "birth_year": None,
-        "suffix_digits": None,
-        "looks_like_real_name": False,
-        "pattern": None,
-        "variations": [],
-    }
-    years = re.findall(r"(19[6-9]\d|20[012]\d)", u)
-    if years:
-        out["birth_year"] = years[0]
-    suffix = re.findall(r"(\d{2,4})$", u)
-    if suffix:
-        out["suffix_digits"] = suffix[0]
-    if re.match(r"^[A-Za-z]+[._]?[A-Za-z]+$", u) and not any(c.isdigit() for c in u):
-        out["looks_like_real_name"] = True
-    patterns = [
-        (r"^[a-z]+\d{4}$", "name followed by a year"),
-        (r"^[a-z]+_[a-z]+$", "two words with underscore"),
-        (r"^[a-z]+\.[a-z]+$", "first name dot last name"),
-        (r"^[A-Z][a-z]+[A-Z][a-z]+$", "CamelCase format"),
-        (r"^[a-z]+\d{2,3}$", "name with number suffix"),
-        (r"^[a-z]{3,8}$", "short lowercase word"),
-    ]
-    for pat, label in patterns:
-        if re.match(pat, u):
-            out["pattern"] = label
-            break
-    base = re.sub(r"\d+$", "", u).replace(".", "").replace("_", "")
-    variations = set()
-    variations.add(base + "official")
-    variations.add(base + "_official")
-    variations.add("the" + base)
-    variations.add(base + "real")
-    variations.add(base + "tv")
-    if out["suffix_digits"]:
-        other_num = "1" if out["suffix_digits"] != "1" else "2"
-        variations.add(re.sub(r"\d+$", other_num, u))
-    out["variations"] = [v for v in list(variations)[:5] if v.lower() != u.lower() and len(v) <= 30]
-    return out
-
-# ----------------------------------------------------------------------
-#  Dork generator (unchanged)
-# ----------------------------------------------------------------------
+# ══════════════════════════════════════════════════════════════════════
+# Google Dork templates (22 total)
+# ══════════════════════════════════════════════════════════════════════
 DORK_TEMPLATES = [
-    {"group": "Identity", "icon": "🌐", "label": "Username across the entire web", "desc": "Every page Google has indexed that contains this exact username.", "q": '"{u}"'},
-    {"group": "Identity", "icon": "👤", "label": "Username alongside real name", "desc": "Find pages where a real name appears next to this username.", "q": '"{u}" "my name is" OR "I am" OR "full name" OR "real name" OR "known as"'},
-    {"group": "Identity", "icon": "🌍", "label": "Personal websites and blogs", "desc": "Find personal sites, portfolios, or blogs that belong to this person.", "q": '"{u}" site:wordpress.com OR site:substack.com OR site:medium.com OR site:wix.com OR site:blogger.com'},
-    {"group": "Identity", "icon": "🔗", "label": "Bio link pages", "desc": "Find Linktree, Beacons, or similar pages that list all of their accounts.", "q": '"{u}" site:linktr.ee OR site:beacons.ai OR site:bio.link OR site:taplink.cc OR site:lnk.bio'},
-    {"group": "Social Media", "icon": "📸", "label": "Instagram profile", "desc": "Find the public Instagram profile for this username.", "q": 'site:instagram.com "{u}"'},
-    {"group": "Social Media", "icon": "🎵", "label": "TikTok profile", "desc": "Find TikTok videos and the profile page for this username.", "q": 'site:tiktok.com "@{u}" OR site:tiktok.com "/{u}"'},
-    {"group": "Social Media", "icon": "▶️", "label": "YouTube channel", "desc": "Find the YouTube channel and any uploaded videos.", "q": 'site:youtube.com "@{u}" OR site:youtube.com "c/{u}"'},
-    {"group": "Social Media", "icon": "🔵", "label": "Facebook profile or page", "desc": "Search for a public Facebook profile or page with this name.", "q": 'site:facebook.com "{u}"'},
-    {"group": "Social Media", "icon": "🧵", "label": "Threads profile", "desc": "Find the Threads profile for this username.", "q": 'site:threads.net "@{u}"'},
-    {"group": "Social Media", "icon": "👻", "label": "Snapchat profile", "desc": "Find the public Snapchat profile or story page.", "q": 'site:snapchat.com "{u}" OR "snapchat.com/add/{u}"'},
-    {"group": "Social Media", "icon": "𝕏", "label": "Twitter profile", "desc": "Find the Twitter (now X) profile for this username.", "q": 'site:twitter.com "{u}" OR site:x.com "{u}"'},
-    {"group": "Social Media", "icon": "🤖", "label": "Reddit account", "desc": "Find Reddit posts, comments, and the profile for this username.", "q": 'site:reddit.com "u/{u}" OR site:reddit.com "/user/{u}"'},
-    {"group": "Social Media", "icon": "✈️", "label": "Telegram channel or bot", "desc": "Find a public Telegram channel, group, or bot with this name.", "q": '"t.me/{u}" OR site:t.me "{u}"'},
-    {"group": "Contact", "icon": "📧", "label": "Email address mentions", "desc": "Find any publicly posted email address alongside this username.", "q": '"{u}" "@gmail.com" OR "@yahoo.com" OR "@outlook.com" OR "@hotmail.com" OR "@icloud.com"'},
-    {"group": "Contact", "icon": "📞", "label": "Phone or messaging contact", "desc": "Find any publicly shared phone number or messaging contact linked to this username.", "q": '"{u}" "phone" OR "whatsapp" OR "contact me" OR "reach me" OR "call me" OR "message me"'},
-    {"group": "Contact", "icon": "🔑", "label": "Username plus email domain pattern", "desc": "Try to find an email where the username is the local part.", "q": '"{u}@" OR "mailto:{u}"'},
-    {"group": "Location", "icon": "📍", "label": "City or country mentions", "desc": "Find bios or posts where this username is paired with a location.", "q": '"{u}" "lives in" OR "based in" OR "from" OR "located in" OR "i am from"'},
-    {"group": "Location", "icon": "🏫", "label": "School or university links", "desc": "Find any university, college, or school mentioned alongside this username.", "q": '"{u}" university OR college OR school OR student OR alumni OR degree'},
-    {"group": "Documents", "icon": "📄", "label": "Public CV or resumé", "desc": "Find a publicly accessible PDF resumé or CV that uses this username.", "q": '"{u}" resume OR CV OR "curriculum vitae" filetype:pdf'},
-    {"group": "Documents", "icon": "📑", "label": "Presentations and slideshows", "desc": "Find public PowerPoint or PDF presentations that mention this name.", "q": '"{u}" filetype:pptx OR filetype:pdf presentation OR slides OR slideshow'},
-    {"group": "Developer", "icon": "💻", "label": "GitHub presence", "desc": "Find GitHub repositories, gists, and contributions for this username.", "q": 'site:github.com "{u}"'},
-    {"group": "Developer", "icon": "📚", "label": "Developer forum activity", "desc": "Find posts and answers on Stack Overflow and other coding forums.", "q": '"{u}" site:stackoverflow.com OR site:dev.to OR site:hashnode.com OR site:codepen.io'},
-    {"group": "Exposure", "icon": "📋", "label": "Paste site mentions", "desc": "Find any paste on Pastebin or similar sites that mentions this username.", "q": '"{u}" site:pastebin.com OR site:paste.ee OR site:dpaste.com'},
-    {"group": "Exposure", "icon": "⚠️", "label": "Data breach or leak mentions", "desc": "Find public discussions where this username appears in breach-related content.", "q": '"{u}" "data breach" OR "leaked" OR "hacked" OR "dump" -site:haveibeenpwned.com'},
-    {"group": "Exposure", "icon": "📰", "label": "News and press mentions", "desc": "Find news articles, press releases, or media that mention this username.", "q": '"{u}" site:news.google.com OR inurl:article OR "press release" OR reported'},
-    {"group": "Media", "icon": "🎙️", "label": "Podcast or interview appearances", "desc": "Find podcasts, interviews, or recorded conversations featuring this person.", "q": '"{u}" podcast OR interview OR "guest on" OR episode OR "conversation with"'},
-    {"group": "Media", "icon": "🖼️", "label": "Profile pictures and avatars", "desc": "Find images that are tagged, captioned, or described using this username.", "q": '"{u}" "profile picture" OR avatar OR pfp OR headshot OR photo'},
-    {"group": "Commerce", "icon": "🛍️", "label": "Online shops or storefronts", "desc": "Find any online shop or storefront linked to this username.", "q": '"{u}" site:etsy.com OR site:ebay.com OR site:depop.com OR site:amazon.com/shop'},
-    {"group": "Web3", "icon": "🪙", "label": "Crypto and Web3 activity", "desc": "Find wallet addresses, NFT collections, or crypto activity linked to this username.", "q": '"{u}" ethereum OR bitcoin OR NFT OR opensea OR wallet OR crypto OR web3'},
-    {"group": "Advanced", "icon": "🔭", "label": "Username inside page body text only", "desc": "Force search engines to find the username specifically in the body of pages, not just URLs.", "q": 'intext:"{u}" -inurl:"{u}"'},
-    {"group": "Advanced", "icon": "🧩", "label": "Username appears in URL paths", "desc": "Find any site where this username appears as part of the page URL path.", "q": 'inurl:"{u}" -site:twitter.com -site:instagram.com -site:tiktok.com'},
+    # Identity
+    {
+        "group": "Identity",
+        "label": "Exact username — all sites",
+        "desc":  "Search every page Google has indexed for this exact username string.",
+        "query": '"{username}"',
+        "icon":  "🌐",
+    },
+    {
+        "group": "Identity",
+        "label": "Username as a real name variation",
+        "desc":  "Find pages that treat the username as a person's actual name.",
+        "query": '"{username}" person OR profile OR "about me" OR bio',
+        "icon":  "🪪",
+    },
+    {
+        "group": "Identity",
+        "label": "Username + website or blog",
+        "desc":  "Find personal sites, blogs, or portfolios linked to this name.",
+        "query": '"{username}" site:wordpress.com OR site:blogger.com OR site:substack.com OR site:ghost.io',
+        "icon":  "🌍",
+    },
+
+    # Social
+    {
+        "group": "Social",
+        "label": "Major social platforms",
+        "desc":  "Search Instagram, TikTok, Twitter/X, Facebook and Snapchat at once.",
+        "query": '"{username}" site:instagram.com OR site:tiktok.com OR site:twitter.com OR site:facebook.com OR site:snapchat.com',
+        "icon":  "👥",
+    },
+    {
+        "group": "Social",
+        "label": "LinkedIn profile",
+        "desc":  "Find any public LinkedIn profile page for this username.",
+        "query": 'site:linkedin.com/in/ "{username}"',
+        "icon":  "💼",
+    },
+    {
+        "group": "Social",
+        "label": "YouTube channel",
+        "desc":  "Find public YouTube channels with this name or handle.",
+        "query": 'site:youtube.com "{username}" channel OR "@{username}"',
+        "icon":  "▶️",
+    },
+    {
+        "group": "Social",
+        "label": "Telegram public channel or group",
+        "desc":  "Find public Telegram channels, bots, or groups linked to this username.",
+        "query": 'site:t.me "{username}" OR "t.me/{username}"',
+        "icon":  "✈️",
+    },
+
+    # Dev
+    {
+        "group": "Dev",
+        "label": "GitHub — code, repos, gists",
+        "desc":  "Find all public GitHub activity: repos, gists, issues, comments.",
+        "query": 'site:github.com "{username}"',
+        "icon":  "💻",
+    },
+    {
+        "group": "Dev",
+        "label": "Stack Overflow / Dev forums",
+        "desc":  "Find developer forum activity on Stack Overflow, Reddit r/programming, etc.",
+        "query": '"{username}" site:stackoverflow.com OR site:dev.to OR site:hashnode.com',
+        "icon":  "📚",
+    },
+
+    # Contact clues
+    {
+        "group": "Contact",
+        "label": "Email address clues",
+        "desc":  "Find publicly posted email addresses alongside this username in any context.",
+        "query": '"{username}" "@gmail.com" OR "@yahoo.com" OR "@outlook.com" OR "@hotmail.com" OR "email"',
+        "icon":  "📧",
+    },
+    {
+        "group": "Contact",
+        "label": "Phone number mentions",
+        "desc":  "Find publicly shared phone numbers associated with this username.",
+        "query": '"{username}" "phone" OR "tel" OR "call me" OR "whatsapp" OR "contact"',
+        "icon":  "📞",
+    },
+    {
+        "group": "Contact",
+        "label": "Username in forums & discussion boards",
+        "desc":  "Find forum posts, threads, or comments by or about this username.",
+        "query": '"{username}" site:reddit.com OR site:quora.com OR site:forums.com OR inurl:forum',
+        "icon":  "💬",
+    },
+
+    # Location
+    {
+        "group": "Location",
+        "label": "Location mentions",
+        "desc":  "Find posts, bios, or profiles where this username is paired with a location.",
+        "query": '"{username}" location OR city OR country OR "lives in" OR "based in" OR "from"',
+        "icon":  "📍",
+    },
+    {
+        "group": "Location",
+        "label": "Username + timezone or region",
+        "desc":  "Find references to a timezone, region, or country next to this username.",
+        "query": '"{username}" GMT OR UTC OR timezone OR region OR state OR province',
+        "icon":  "🗺️",
+    },
+
+    # Files & Documents
+    {
+        "group": "Documents",
+        "label": "Public resume or CV (PDF)",
+        "desc":  "Find publicly accessible PDF resumes or CVs associated with this name.",
+        "query": '"{username}" resume OR CV OR curriculum filetype:pdf',
+        "icon":  "📄",
+    },
+    {
+        "group": "Documents",
+        "label": "Public documents (DOCX, PPTX)",
+        "desc":  "Find public Microsoft Office files that mention this username.",
+        "query": '"{username}" filetype:docx OR filetype:pptx OR filetype:xlsx',
+        "icon":  "📑",
+    },
+
+    # Pastes & Leaks
+    {
+        "group": "Pastes",
+        "label": "Username on paste sites",
+        "desc":  "Find any paste that mentions this username on Pastebin and similar sites.",
+        "query": '"{username}" site:pastebin.com OR site:paste.ee OR site:hastebin.com OR site:dpaste.com',
+        "icon":  "📋",
+    },
+    {
+        "group": "Pastes",
+        "label": "Username in data breach mentions",
+        "desc":  "Find any public mention of this username in breach-related discussions.",
+        "query": '"{username}" "data breach" OR "leaked" OR "exposed" -site:haveibeenpwned.com',
+        "icon":  "⚠️",
+    },
+
+    # News & Media
+    {
+        "group": "Media",
+        "label": "News articles mentioning username",
+        "desc":  "Find news articles, press releases, or media coverage of this username.",
+        "query": '"{username}" site:news.google.com OR inurl:news OR "press release" OR "reported"',
+        "icon":  "📰",
+    },
+    {
+        "group": "Media",
+        "label": "Podcasts or interviews",
+        "desc":  "Find podcasts, interviews, or spoken-word content featuring this name.",
+        "query": '"{username}" podcast OR interview OR "guest on" OR "episode"',
+        "icon":  "🎙️",
+    },
+
+    # Image / Avatar
+    {
+        "group": "Images",
+        "label": "Profile pictures and avatars",
+        "desc":  "Find images captioned, tagged, or described with this username.",
+        "query": '"{username}" profile picture OR avatar OR "photo of" OR pfp',
+        "icon":  "🖼️",
+    },
+
+    # Crypto / Web3
+    {
+        "group": "Web3",
+        "label": "Crypto & Web3 presence",
+        "desc":  "Find wallet addresses, NFT profiles, or crypto activity linked to this username.",
+        "query": '"{username}" wallet OR ethereum OR bitcoin OR NFT OR "opensea" OR "crypto"',
+        "icon":  "🪙",
+    },
 ]
 
-def build_dorks(username: str) -> list:
-    out = []
-    for d in DORK_TEMPLATES:
-        q = d["q"].replace("{u}", username)
-        out.append({
-            "group": d["group"],
-            "icon": d["icon"],
-            "label": d["label"],
-            "desc": d["desc"],
-            "query": q,
-            "google": "https://www.google.com/search?q=" + quote_plus(q),
-            "bing": "https://www.bing.com/search?q=" + quote_plus(q),
-            "ddg": "https://duckduckgo.com/?q=" + quote_plus(q),
-        })
-    return out
 
-# ----------------------------------------------------------------------
-#  Main async scan
-# ----------------------------------------------------------------------
-async def run_scan_async(username: str) -> dict:
-    results = {}
-    async with aiohttp.ClientSession() as session:
-        tasks = [checker(username, session) for checker in CHECKERS.values()]
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
-        for (name, checker), res in zip(CHECKERS.items(), responses):
-            if isinstance(res, Exception):
-                res = _result(name, f"https://—/{username}", False, None, error=str(res))
-            res["icon"] = ICONS[name]
-            res["color"] = COLORS[name]
-            results[name] = res
+# ══════════════════════════════════════════════════════════════════════
+# Chunked async scanner — avoids bursting all 45 requests at once
+# ══════════════════════════════════════════════════════════════════════
+CHUNK_SIZE = 8          # requests per chunk
+CHUNK_DELAY = (0.4, 0.9)  # random sleep between chunks (seconds)
+READ_BYTES  = 32_000    # max body bytes to read (avoid huge downloads)
 
-    found = [r for r in results.values() if r["found"]]
-    not_found = [r for r in results.values() if not r["found"] and not r["error"]]
-    errors = [r for r in results.values() if r["error"]]
 
-    merged_info = {}
+async def check_platform(session, name, cfg, username, timeout=14):
+    url = cfg["url"].replace("{u}", username)
+    result = {
+        "platform":        name,
+        "url":             url,
+        "found":           False,
+        "confidence":      cfg["confidence"],
+        "category":        cfg["category"],
+        "icon":            cfg["icon"],
+        "data":            {},
+        "error":           None,
+        "error_detail":    None,
+        "response_time_ms": None,
+        "http_status":     None,
+    }
+    try:
+        await asyncio.sleep(random.uniform(0.05, 0.25))   # tiny per-request jitter
+        t0 = time.monotonic()
+        async with session.get(
+            url,
+            headers=get_headers(),
+            timeout=aiohttp.ClientTimeout(total=timeout),
+            allow_redirects=True,
+            ssl=False,
+        ) as resp:
+            elapsed = int((time.monotonic() - t0) * 1000)
+            result["response_time_ms"] = elapsed
+            result["http_status"]      = resp.status
+
+            if resp.status in cfg["not_found_codes"]:
+                result["found"] = False
+                return result
+            if resp.status >= 400:
+                result["found"] = False
+                return result
+
+            # Read partial body
+            raw = b""
+            async for chunk in resp.content.iter_chunked(4096):
+                raw += chunk
+                if len(raw) >= READ_BYTES:
+                    break
+            body = raw.decode("utf-8", errors="ignore").lower()
+
+            # body_miss — 200 but "not found" text present → gone
+            miss = cfg.get("body_miss")
+            if miss and miss.lower() in body:
+                result["found"]      = False
+                result["confidence"] = "high"
+                return result
+
+            # body_hit — must be present to confirm
+            hit = cfg.get("body_hit")
+            if hit:
+                if hit.lower() in body:
+                    result["found"]      = True
+                    result["confidence"] = "high"
+                else:
+                    result["found"] = False
+                return result
+
+            # No pattern → status-code match
+            result["found"] = True
+
+        # Enrich via public API
+        api_tpl = cfg.get("api")
+        if api_tpl and result["found"]:
+            result["data"] = await fetch_api(session, api_tpl.replace("{u}", username), name)
+
+    except asyncio.TimeoutError:
+        result["error"]        = "timeout"
+        result["error_detail"] = f"No response within {timeout}s"
+    except aiohttp.ClientConnectorError as e:
+        result["error"]        = "connection_failed"
+        result["error_detail"] = "Could not reach server"
+    except aiohttp.ServerDisconnectedError:
+        result["error"]        = "server_disconnected"
+        result["error_detail"] = "Server closed connection unexpectedly"
+    except aiohttp.TooManyRedirects:
+        result["error"]        = "redirect_loop"
+        result["error_detail"] = "Too many redirects"
+    except Exception as e:
+        result["error"]        = "unknown"
+        result["error_detail"] = type(e).__name__
+    return result
+
+
+async def fetch_api(session, url, platform):
+    hdrs = {**get_headers(), "Accept": "application/json"}
+    try:
+        async with session.get(
+            url, headers=hdrs,
+            timeout=aiohttp.ClientTimeout(total=10), ssl=False
+        ) as r:
+            if r.status == 200:
+                raw = await r.json(content_type=None)
+                return _parse_api(platform, raw)
+    except Exception:
+        pass
+    return {}
+
+
+def _parse_api(platform, raw):
+    if platform == "GitHub":
+        keys = ["name","bio","location","company","blog",
+                "public_repos","public_gists","followers",
+                "following","created_at","avatar_url","email","twitter_username"]
+        return {k: raw[k] for k in keys if raw.get(k) not in (None, "", 0)}
+
+    if platform == "Chess.com":
+        keys = ["username","name","title","status","country",
+                "location","joined","last_online","followers"]
+        return {k: raw[k] for k in keys if raw.get(k) not in (None, "")}
+
+    if platform == "Dailymotion":
+        keys = ["screenname","description","city","country",
+                "videocount","fans","following"]
+        return {k: raw[k] for k in keys if raw.get(k) not in (None, "")}
+
+    if platform == "GitLab":
+        if isinstance(raw, list) and raw:
+            u = raw[0]
+            keys = ["name","username","bio","location","website_url","created_at"]
+            return {k: u[k] for k in keys if u.get(k) not in (None, "")}
+
+    if platform == "Bitbucket":
+        keys = ["display_name","nickname","website","location","created_on"]
+        return {k: raw[k] for k in keys if raw.get(k) not in (None, "")}
+
+    if platform == "Vimeo":
+        keys = ["author_name","author_url"]
+        return {k: raw[k] for k in keys if raw.get(k) not in (None, "")}
+
+    return {}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Chunked executor
+# ══════════════════════════════════════════════════════════════════════
+async def run_scan(username: str):
+    items = list(PLATFORMS.items())
+
+    # Build connector with per-host limits (polite)
+    connector = aiohttp.TCPConnector(
+        limit=30, limit_per_host=3,
+        ttl_dns_cache=300, ssl=False
+    )
+    async with aiohttp.ClientSession(connector=connector) as session:
+        all_results = []
+        for i in range(0, len(items), CHUNK_SIZE):
+            chunk = items[i : i + CHUNK_SIZE]
+            tasks = [check_platform(session, n, c, username) for n, c in chunk]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for r in results:
+                if isinstance(r, dict):
+                    all_results.append(r)
+            if i + CHUNK_SIZE < len(items):
+                await asyncio.sleep(random.uniform(*CHUNK_DELAY))
+
+    found     = [p for p in all_results if p["found"]]
+    not_found = [p for p in all_results if not p["found"] and not p["error"]]
+    errors    = [p for p in all_results if p["error"]]
+
+    # Cross-platform data linkage
+    linked = {}
     for p in found:
-        for k, v in (p.get("data") or {}).items():
-            if v and k not in merged_info:
-                merged_info[k] = {"value": str(v), "source": p["platform"]}
+        d = p.get("data", {})
+        for key in ["email","twitter_username","blog","location","name",
+                    "bio","website_url","country","city","company"]:
+            if d.get(key):
+                linked.setdefault(key, [])
+                linked[key].append({"source": p["platform"], "value": str(d[key])})
+
+    # Confidence summary
+    conf = {"high": 0, "medium": 0, "low": 0}
+    for p in found:
+        conf[p.get("confidence","medium")] = conf.get(p.get("confidence","medium"),0) + 1
+
+    # Error breakdown
+    err_types = {}
+    for p in errors:
+        t = p.get("error","unknown")
+        err_types[t] = err_types.get(t,0) + 1
 
     return {
         "query": {
-            "username": username,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "total": len(results),
+            "username":          username,
+            "timestamp":         datetime.now(timezone.utc).isoformat(),
+            "platforms_checked": len(all_results),
         },
         "summary": {
-            "found": len(found),
-            "not_found": len(not_found),
-            "errors": len(errors),
-            "score": round(len(found) / max(len(results), 1) * 100, 1),
+            "found_count":        len(found),
+            "not_found_count":    len(not_found),
+            "error_count":        len(errors),
+            "score":              round(len(found) / max(len(all_results), 1) * 100, 1),
+            "confidence_breakdown": conf,
+            "error_types":        err_types,
         },
-        "analysis": analyse(username),
-        "merged_info": merged_info,
-        "platforms": list(results.values()),
-        "dorks": build_dorks(username),
+        "username_analysis":   analyse_username(username),
+        "platforms_found":     found,
+        "platforms_not_found": not_found,
+        "platforms_error":     errors,
+        "linked_data":         linked,
+        "dork_urls":           build_dorks(username),
     }
 
-# ----------------------------------------------------------------------
-#  Flask routes
-# ----------------------------------------------------------------------
+
+# ══════════════════════════════════════════════════════════════════════
+# Username analysis
+# ══════════════════════════════════════════════════════════════════════
+def analyse_username(u: str):
+    a = {
+        "length":               len(u),
+        "has_numbers":          bool(re.search(r"\d", u)),
+        "has_underscores":      "_" in u,
+        "has_dots":             "." in u,
+        "has_hyphens":          "-" in u,
+        "all_lowercase":        u.islower(),
+        "all_uppercase":        u.isupper(),
+        "mixed_case":           not u.islower() and not u.isupper() and u.isalpha(),
+        "possible_birth_year":  None,
+        "suffix_digits":        None,
+        "possible_real_name":   False,
+        "common_pattern":       None,
+    }
+    y = re.findall(r"(19[6-9]\d|20[0-2]\d)", u)
+    if y:
+        a["possible_birth_year"] = y[0]
+    s = re.findall(r"(\d{2,4})$", u)
+    if s:
+        a["suffix_digits"] = s[0]
+    if re.match(r"^[A-Za-z]+[._]?[A-Za-z]+$", u) and not any(c.isdigit() for c in u):
+        a["possible_real_name"] = True
+    # Pattern detection
+    if re.match(r"^[a-z]+\d{4}$", u):
+        a["common_pattern"] = "word+year"
+    elif re.match(r"^[a-z]+_[a-z]+$", u):
+        a["common_pattern"] = "word_word"
+    elif re.match(r"^[a-z]+\.[a-z]+$", u):
+        a["common_pattern"] = "first.last"
+    elif re.match(r"^[A-Z][a-z]+[A-Z][a-z]+$", u):
+        a["common_pattern"] = "CamelCase"
+    return a
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Dork builder
+# ══════════════════════════════════════════════════════════════════════
+def build_dorks(username: str):
+    out = []
+    for d in DORK_TEMPLATES:
+        q = d["query"].replace("{username}", username)
+        out.append({
+            "group":  d["group"],
+            "label":  d["label"],
+            "desc":   d["desc"],
+            "icon":   d["icon"],
+            "query":  q,
+            "google": f"https://www.google.com/search?q={quote_plus(q)}",
+            "bing":   f"https://www.bing.com/search?q={quote_plus(q)}",
+            "ddg":    f"https://duckduckgo.com/?q={quote_plus(q)}",
+        })
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Flask
+# ══════════════════════════════════════════════════════════════════════
 @app.route("/")
 def index():
     return send_from_directory("../frontend", "index.html")
+
 
 @app.route("/api/scan", methods=["POST"])
 def scan():
@@ -370,21 +1012,51 @@ def scan():
     username = (body.get("username") or "").strip()
 
     if not username:
-        return jsonify({"error": "Please enter a username.", "code": "EMPTY"}), 400
+        return jsonify({"error": "Username is required.", "code": "MISSING_USERNAME"}), 400
+
     if len(username) > 50:
         return jsonify({"error": "Username must be 50 characters or fewer.", "code": "TOO_LONG"}), 400
+
     if not re.match(r"^[a-zA-Z0-9._\-]{1,50}$", username):
-        return jsonify({"error": "Username can only contain letters, numbers, dots, hyphens, and underscores.", "code": "BAD_CHARS"}), 400
+        return jsonify({
+            "error": "Username may only contain letters, numbers, dots ( . ), hyphens ( - ), or underscores ( _ ).",
+            "code": "INVALID_CHARS"
+        }), 400
 
     try:
-        result = asyncio.run(run_scan_async(username))
+        result = asyncio.run(run_scan(username))
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": "The scan could not complete. Please try again.", "code": "SERVER_ERROR"}), 500
+        return jsonify({"error": "Scan failed on the server. Please try again.", "code": "SERVER_ERROR", "detail": str(e)}), 500
 
-@app.route("/health")
+
+@app.route("/api/platforms", methods=["GET"])
+def list_platforms():
+    return jsonify([
+        {
+            "name":       n,
+            "url_template": v["url"],
+            "category":   v["category"],
+            "icon":       v["icon"],
+            "confidence": v["confidence"],
+        }
+        for n, v in PLATFORMS.items()
+    ])
+
+
+@app.route("/api/dorks", methods=["POST"])
+def dork_only():
+    body = request.get_json(force=True, silent=True) or {}
+    username = (body.get("username") or "").strip()
+    if not username:
+        return jsonify({"error": "Username required.", "code": "MISSING_USERNAME"}), 400
+    return jsonify(build_dorks(username))
+
+
+@app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"ok": True, "platforms": len(CHECKERS), "dorks": len(DORK_TEMPLATES)})
+    return jsonify({"status": "ok", "platforms": len(PLATFORMS), "dorks": len(DORK_TEMPLATES)})
+
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000, threaded=True)
+    app.run(debug=True, port=5000, threaded=True)
