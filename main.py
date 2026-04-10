@@ -1,38 +1,69 @@
 """
-OSINT Username Intelligence Tool v2 — Ethical Public-Data Scanner
-─────────────────────────────────────────────────────────────────
-• Only checks publicly accessible profile URLs (no auth required)
-• Body-pattern matching for high-confidence results (not just HTTP status)
-• Official public APIs only (GitHub, YouTube Data API public endpoints)
-• Google Dork URL generation (opens search — no scraping Google)
-• No credential harvesting, no auth-system abuse, no ToS violations
+OSINT Username Intelligence Tool v3 — SSE Streaming Edition
+──────────────────────────────────────────────────────────
+• Real-time Server-Sent Events: results appear as found, not all at once
+• ThreadPoolExecutor: 30 concurrent checks, massive speed boost
+• Rotating User-Agents + client hint headers
+• Body-pattern verification (not just HTTP status)
+• Google Dork URL generation with Bing + DuckDuckGo
+• Heartbeat keep-alive to prevent connection drops
+• Zero timeout UX: server talks to client the whole time
 """
 
-import asyncio
-import aiohttp
 import json
 import time
 import re
-import hashlib
+import random
+import queue
 from datetime import datetime, timezone
 from urllib.parse import quote_plus
-from flask import Flask, request, jsonify, send_from_directory
+from concurrent.futures import ThreadPoolExecutor
+
+import requests as http
+import urllib3
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
+
+# Suppress SSL verification warnings (we use verify=False for speed/compatibility)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
 CORS(app)
 
 # ══════════════════════════════════════════════════════════════════
+# User-Agent rotation pool — mix of Chrome, Firefox, Safari, Edge
+# ══════════════════════════════════════════════════════════════════
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36",
+]
+
+
+def get_headers():
+    """Return a randomised, realistic browser header set."""
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Upgrade-Insecure-Requests": "1",
+        "Referer": "https://www.google.com/",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-User": "?1",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════
 # Platform registry
-# Each entry has:
-#   url           — public profile URL template
-#   api           — optional public API endpoint
-#   not_found_codes — HTTP codes that mean "no account"
-#   body_must      — string that MUST appear in body if account exists
-#   body_must_not  — string that means 404-in-disguise (200 but user gone)
-#   confidence     — "high" if body pattern checked, "medium" otherwise
-#   category       — display grouping
-#   icon           — emoji
 # ══════════════════════════════════════════════════════════════════
 PLATFORMS = {
     # ── Social mega-platforms ─────────────────────────────────────
@@ -136,7 +167,6 @@ PLATFORMS = {
         "category": "Professional",
         "icon": "💼",
     },
-
     # ── Video / Streaming ─────────────────────────────────────────
     "YouTube": {
         "url": "https://www.youtube.com/@{u}",
@@ -150,7 +180,7 @@ PLATFORMS = {
     },
     "Twitch": {
         "url": "https://www.twitch.tv/{u}",
-        "api": "https://api.twitch.tv/helix/users?login={u}",
+        "api": None,
         "not_found_codes": [404],
         "body_must": None,
         "body_must_not": None,
@@ -178,7 +208,6 @@ PLATFORMS = {
         "category": "Video",
         "icon": "📹",
     },
-
     # ── Dev & Code ────────────────────────────────────────────────
     "GitHub": {
         "url": "https://github.com/{u}",
@@ -250,7 +279,16 @@ PLATFORMS = {
         "category": "Dev",
         "icon": "🖊️",
     },
-
+    "HackerOne": {
+        "url": "https://hackerone.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_must": None,
+        "body_must_not": "Page not found",
+        "confidence": "medium",
+        "category": "Dev",
+        "icon": "🔐",
+    },
     # ── Music & Audio ─────────────────────────────────────────────
     "Spotify": {
         "url": "https://open.spotify.com/user/{u}",
@@ -282,7 +320,6 @@ PLATFORMS = {
         "category": "Music",
         "icon": "🎼",
     },
-
     # ── Gaming ────────────────────────────────────────────────────
     "Steam": {
         "url": "https://steamcommunity.com/id/{u}",
@@ -314,7 +351,6 @@ PLATFORMS = {
         "category": "Gaming",
         "icon": "♟️",
     },
-
     # ── Creative ──────────────────────────────────────────────────
     "Medium": {
         "url": "https://medium.com/@{u}",
@@ -376,29 +412,27 @@ PLATFORMS = {
         "category": "Creative",
         "icon": "📖",
     },
-
     # ── Messaging / Community ─────────────────────────────────────
     "Telegram": {
         "url": "https://t.me/{u}",
         "api": None,
         "not_found_codes": [404],
-        "body_must": 'tgme_page_title',
+        "body_must": "tgme_page_title",
         "body_must_not": None,
         "confidence": "high",
         "category": "Messaging",
         "icon": "✈️",
     },
-    "Discord (lookup)": {
-        "url": "https://discord.com/users/{u}",
+    "Reddit": {
+        "url": "https://www.reddit.com/user/{u}",
         "api": None,
         "not_found_codes": [404],
         "body_must": None,
-        "body_must_not": None,
-        "confidence": "low",
-        "category": "Messaging",
-        "icon": "🎙️",
+        "body_must_not": "Sorry, nobody on Reddit goes by that name.",
+        "confidence": "high",
+        "category": "Forums",
+        "icon": "🟠",
     },
-
     # ── Q&A / Forums ──────────────────────────────────────────────
     "Quora": {
         "url": "https://www.quora.com/profile/{u}",
@@ -410,7 +444,6 @@ PLATFORMS = {
         "category": "Forums",
         "icon": "❓",
     },
-
     # ── Shopping / Other ──────────────────────────────────────────
     "Etsy": {
         "url": "https://www.etsy.com/shop/{u}",
@@ -432,100 +465,133 @@ PLATFORMS = {
         "category": "Creative",
         "icon": "🎁",
     },
+    "Ko-fi": {
+        "url": "https://ko-fi.com/{u}",
+        "api": None,
+        "not_found_codes": [404],
+        "body_must": None,
+        "body_must_not": "Page not found",
+        "confidence": "medium",
+        "category": "Creative",
+        "icon": "☕",
+    },
 }
 
 # ══════════════════════════════════════════════════════════════════
-# Google Dork templates — generates clickable search URLs only
-# No scraping, no automated querying — user opens them in browser
+# Google Dork templates — grouped, with Google + Bing + DDG links
 # ══════════════════════════════════════════════════════════════════
 DORK_TEMPLATES = [
+    # Identity & Presence
     {
-        "label": 'Exact username across all sites',
-        "desc":  'Search every site Google has indexed for this username',
+        "label": "Exact username across all sites",
+        "desc": "Every page Google has indexed containing this exact username",
         "query": '"{username}"',
         "icon": "🌐",
+        "group": "Identity & Presence",
     },
     {
-        "label": 'Username + social profiles',
-        "desc":  'Find profile pages mentioning this username',
+        "label": "Username on major social platforms",
+        "desc": "Profile pages on Twitter, Instagram, Facebook and TikTok",
         "query": '"{username}" site:twitter.com OR site:instagram.com OR site:facebook.com OR site:tiktok.com',
         "icon": "👤",
+        "group": "Identity & Presence",
     },
     {
-        "label": 'Username on GitHub',
-        "desc":  'Find code, gists, and repos linked to this name',
+        "label": "Username on Mastodon & alternatives",
+        "desc": "Fediverse and decentralised social media presence",
+        "query": '"{username}" site:mastodon.social OR site:threads.net OR site:bsky.app',
+        "icon": "🐘",
+        "group": "Identity & Presence",
+    },
+    # Professional & Code
+    {
+        "label": "Username on GitHub",
+        "desc": "Code repositories, gists, and contributions",
         "query": 'site:github.com "{username}"',
         "icon": "💻",
+        "group": "Professional & Code",
     },
     {
-        "label": 'Username + LinkedIn',
-        "desc":  'Find professional profile if public',
+        "label": "Username on LinkedIn",
+        "desc": "Professional profile, job history, connections",
         "query": 'site:linkedin.com "{username}"',
         "icon": "💼",
+        "group": "Professional & Code",
     },
     {
-        "label": 'Username + email clues',
-        "desc":  'Find publicly posted emails alongside this username',
-        "query": '"{username}" email',
+        "label": "Username on dev communities",
+        "desc": "Stack Overflow, HackerNews, Dev.to activity",
+        "query": '"{username}" site:stackoverflow.com OR site:news.ycombinator.com OR site:dev.to',
+        "icon": "🛠️",
+        "group": "Professional & Code",
+    },
+    # Contact & Location
+    {
+        "label": "Username + email clues",
+        "desc": "Publicly posted email addresses alongside this username",
+        "query": '"{username}" email OR "contact me" OR "reach me"',
         "icon": "📧",
+        "group": "Contact & Location",
     },
     {
-        "label": 'Username + location mentions',
-        "desc":  'Find posts or profiles where location is mentioned',
-        "query": '"{username}" location OR city OR country',
+        "label": "Username + location mentions",
+        "desc": "Posts or profiles where a location is mentioned",
+        "query": '"{username}" location OR city OR country OR "based in" OR "from"',
         "icon": "📍",
+        "group": "Contact & Location",
     },
     {
-        "label": 'Username + resume / CV',
-        "desc":  'Find publicly posted resumes or CVs',
+        "label": "Username + phone or contact info",
+        "desc": "Publicly listed contact details alongside this username",
+        "query": '"{username}" "phone" OR "whatsapp" OR "telegram" OR "discord"',
+        "icon": "📞",
+        "group": "Contact & Location",
+    },
+    # Documents & Media
+    {
+        "label": "Username + resume or CV",
+        "desc": "Publicly posted resumes, CVs, and portfolios",
         "query": '"{username}" resume OR CV OR portfolio filetype:pdf',
         "icon": "📄",
+        "group": "Documents & Media",
     },
     {
-        "label": 'Username on pastebin sites',
-        "desc":  'Find pastes that mention this username',
-        "query": '"{username}" site:pastebin.com OR site:paste.ee OR site:ghostbin.co',
+        "label": "Username image search",
+        "desc": "Profile pictures and avatars labelled with this username",
+        "query": '"{username}" profile picture OR avatar OR "profile photo"',
+        "icon": "🖼️",
+        "group": "Documents & Media",
+    },
+    {
+        "label": "Username in news articles",
+        "desc": "News coverage and press mentions",
+        "query": '"{username}" site:news.google.com OR inurl:article OR site:medium.com',
+        "icon": "📰",
+        "group": "Documents & Media",
+    },
+    # Forums & Pastes
+    {
+        "label": "Username on pastebin sites",
+        "desc": "Pastes that mention or are attributed to this username",
+        "query": '"{username}" site:pastebin.com OR site:paste.ee OR site:hastebin.com',
         "icon": "📋",
+        "group": "Forums & Pastes",
     },
     {
-        "label": 'Username on forums & discussion boards',
-        "desc":  'Find forum posts by or about this username',
+        "label": "Username on Reddit and forums",
+        "desc": "Forum posts, threads, and discussions",
         "query": '"{username}" site:reddit.com OR site:quora.com OR site:stackoverflow.com',
         "icon": "💬",
-    },
-    {
-        "label": 'Username + phone or contact info',
-        "desc":  'Find publicly listed contact info alongside username',
-        "query": '"{username}" "phone" OR "contact" OR "reach me"',
-        "icon": "📞",
-    },
-    {
-        "label": 'Username in news articles',
-        "desc":  'Find news coverage mentioning this username',
-        "query": '"{username}" site:news.google.com OR inurl:article',
-        "icon": "📰",
-    },
-    {
-        "label": 'Username image search',
-        "desc":  'Find images labelled with this username',
-        "query": '"{username}" profile picture OR avatar',
-        "icon": "🖼️",
+        "group": "Forums & Pastes",
     },
 ]
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    "Accept": "text/html,application/xhtml+xml,*/*",
-    "Accept-Language": "en-US,en;q=0.9",
-}
 
 # ══════════════════════════════════════════════════════════════════
-# Async platform checker
+# Synchronous platform checker (runs in thread pool workers)
 # ══════════════════════════════════════════════════════════════════
-async def check_platform(session, name, cfg, username, timeout=12):
+def check_platform_sync(name, cfg, username, timeout=12):
+    """Check a single platform synchronously. Safe to call from any thread."""
     url = cfg["url"].replace("{u}", username)
     result = {
         "platform": name,
@@ -539,103 +605,110 @@ async def check_platform(session, name, cfg, username, timeout=12):
         "response_time_ms": None,
         "http_status": None,
     }
+
     try:
         t0 = time.monotonic()
-        async with session.get(
-            url, headers=HEADERS,
-            timeout=aiohttp.ClientTimeout(total=timeout),
-            allow_redirects=True, ssl=False
-        ) as resp:
-            elapsed = int((time.monotonic() - t0) * 1000)
-            result["response_time_ms"] = elapsed
-            result["http_status"] = resp.status
+        resp = http.get(
+            url,
+            headers=get_headers(),
+            timeout=timeout,
+            allow_redirects=True,
+            verify=False,
+        )
+        elapsed = int((time.monotonic() - t0) * 1000)
+        result["response_time_ms"] = elapsed
+        result["http_status"] = resp.status_code
 
-            if resp.status in cfg["not_found_codes"]:
+        # Explicit 404 or other not-found codes
+        if resp.status_code in cfg["not_found_codes"]:
+            result["found"] = False
+            return result
+
+        # Any other client/server error
+        if resp.status_code >= 400:
+            result["found"] = False
+            return result
+
+        body = resp.text
+
+        # body_must_not: phrase signals "not found" disguised as 200
+        if cfg.get("body_must_not") and cfg["body_must_not"].lower() in body.lower():
+            result["found"] = False
+            result["confidence"] = "high"  # confirmed by body text
+            return result
+
+        # body_must: phrase must be present for a real match
+        if cfg.get("body_must"):
+            if cfg["body_must"].lower() in body.lower():
+                result["found"] = True
+                result["confidence"] = "high"
+            else:
                 result["found"] = False
-                return result
+            return result
 
-            if resp.status >= 400:
-                result["found"] = False
-                return result
+        # No body pattern — rely on status code (medium confidence)
+        result["found"] = True
 
-            # Read body for pattern matching
-            try:
-                body = await resp.text(encoding="utf-8", errors="ignore")
-            except Exception:
-                body = ""
+        # Fetch optional public API data
+        if cfg.get("api") and result["found"]:
+            api_url = cfg["api"].replace("{u}", username)
+            result["data"] = fetch_api_data_sync(api_url, name)
 
-            # body_must_not — if this phrase appears, it's a "not found" disguised as 200
-            if cfg.get("body_must_not") and cfg["body_must_not"].lower() in body.lower():
-                result["found"] = False
-                result["confidence"] = "high"  # we confirmed by body
-                return result
-
-            # body_must — must be present for a real match
-            if cfg.get("body_must"):
-                if cfg["body_must"].lower() in body.lower():
-                    result["found"] = True
-                    result["confidence"] = "high"
-                else:
-                    result["found"] = False
-                return result
-
-            # No body pattern — rely on status code alone (medium confidence)
-            result["found"] = True
-
-        # Fetch public API data if available
-        if cfg.get("api"):
-            result["data"] = await fetch_api_data(session, cfg["api"].replace("{u}", username), name)
-
-    except asyncio.TimeoutError:
+    except http.exceptions.Timeout:
         result["error"] = "timeout"
-    except aiohttp.ClientConnectorError:
-        result["error"] = "connection refused"
+    except http.exceptions.ConnectionError:
+        result["error"] = "connection_refused"
+    except http.exceptions.TooManyRedirects:
+        result["error"] = "too_many_redirects"
     except Exception as e:
         result["error"] = type(e).__name__
+
     return result
 
 
-async def fetch_api_data(session, api_url, platform_name):
+def fetch_api_data_sync(api_url, platform_name):
+    """Fetch supplementary public API data for a found profile."""
     try:
-        async with session.get(
+        resp = http.get(
             api_url,
-            headers={**HEADERS, "Accept": "application/json"},
-            timeout=aiohttp.ClientTimeout(total=8),
-            ssl=False,
-        ) as r:
-            if r.status == 200:
-                raw = await r.json(content_type=None)
-                return parse_api_data(platform_name, raw)
+            headers={**get_headers(), "Accept": "application/json"},
+            timeout=8,
+            verify=False,
+        )
+        if resp.status_code == 200:
+            raw = resp.json()
+            return parse_api_data(platform_name, raw)
     except Exception:
         pass
     return {}
 
 
 def parse_api_data(platform, raw):
+    """Extract useful fields from public API responses."""
     if platform == "GitHub":
         return {k: raw.get(k) for k in [
-            "name","bio","location","company","blog",
-            "public_repos","followers","following",
-            "created_at","avatar_url","email","twitter_username"
+            "name", "bio", "location", "company", "blog",
+            "public_repos", "followers", "following",
+            "created_at", "avatar_url", "email", "twitter_username",
         ] if raw.get(k) is not None}
 
     if platform == "Chess.com":
         return {k: raw.get(k) for k in [
-            "username","name","title","status","country",
-            "location","joined","last_online","followers"
+            "username", "name", "title", "status", "country",
+            "location", "joined", "last_online", "followers",
         ] if raw.get(k) is not None}
 
     if platform == "Dailymotion":
         return {k: raw.get(k) for k in [
-            "screenname","description","city","country",
-            "videocount","fans","following"
+            "screenname", "description", "city", "country",
+            "videocount", "fans", "following",
         ] if raw.get(k) is not None}
 
     if platform == "GitLab":
         if isinstance(raw, list) and raw:
             u = raw[0]
             return {k: u.get(k) for k in [
-                "name","username","bio","location","website_url","created_at"
+                "name", "username", "bio", "location", "website_url", "created_at",
             ] if u.get(k) is not None}
     return {}
 
@@ -663,14 +736,13 @@ def analyse_username(username):
     suffix = re.findall(r"(\d{2,4})$", username)
     if suffix:
         analysis["common_suffix_digits"] = suffix[0]
-    # Looks like FirstLastName or first.last pattern
     if re.match(r"^[A-Za-z]+[._]?[A-Za-z]+$", username) and not any(c.isdigit() for c in username):
         analysis["possible_real_name"] = True
     return analysis
 
 
 # ══════════════════════════════════════════════════════════════════
-# Generate dork URLs
+# Generate dork URLs — returns google + bing + ddg per dork
 # ══════════════════════════════════════════════════════════════════
 def build_dork_urls(username):
     results = []
@@ -678,97 +750,165 @@ def build_dork_urls(username):
         q = d["query"].replace("{username}", username)
         results.append({
             "label": d["label"],
-            "desc":  d["desc"],
-            "icon":  d["icon"],
+            "desc": d["desc"],
+            "icon": d["icon"],
+            "group": d["group"],
             "query": q,
-            "url":   f"https://www.google.com/search?q={quote_plus(q)}",
-            "bing":  f"https://www.bing.com/search?q={quote_plus(q)}",
+            "google": f"https://www.google.com/search?q={quote_plus(q)}",
+            "bing": f"https://www.bing.com/search?q={quote_plus(q)}",
+            "ddg": f"https://duckduckgo.com/?q={quote_plus(q)}",
         })
     return results
 
 
 # ══════════════════════════════════════════════════════════════════
-# Main scan
+# Build cross-platform linked data from found profiles
 # ══════════════════════════════════════════════════════════════════
-async def run_scan(username):
-    connector = aiohttp.TCPConnector(limit=40, ssl=False)
-    async with aiohttp.ClientSession(connector=connector) as session:
-        tasks = [
-            check_platform(session, name, cfg, username)
-            for name, cfg in PLATFORMS.items()
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    platform_results = []
-    for r in results:
-        if isinstance(r, dict) and "platform" in r:
-            platform_results.append(r)
-
-    found     = [p for p in platform_results if p["found"]]
-    not_found = [p for p in platform_results if not p["found"] and not p["error"]]
-    errors    = [p for p in platform_results if p["error"]]
-
-    # Cross-platform data linkage
-    linked_data = {}
-    for p in found:
+def build_linked_data(found_list):
+    linked = {}
+    for p in found_list:
         d = p.get("data", {})
-        for key in ["email","twitter_username","blog","location","name","bio","website_url","country","city"]:
+        for key in ["email", "twitter_username", "blog", "location",
+                    "name", "bio", "website_url", "country", "city"]:
             if d.get(key):
-                linked_data.setdefault(key, [])
-                linked_data[key].append({"source": p["platform"], "value": d[key]})
-
-    # Confidence breakdown
-    conf_counts = {"high": 0, "medium": 0, "low": 0}
-    for p in found:
-        conf_counts[p["confidence"]] = conf_counts.get(p["confidence"], 0) + 1
-
-    return {
-        "query": {
-            "username": username,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "platforms_checked": len(platform_results),
-        },
-        "summary": {
-            "found_count":     len(found),
-            "not_found_count": len(not_found),
-            "error_count":     len(errors),
-            "score":           round(len(found) / max(len(platform_results), 1) * 100, 1),
-            "confidence_breakdown": conf_counts,
-        },
-        "username_analysis":  analyse_username(username),
-        "platforms_found":    found,
-        "platforms_not_found": not_found,
-        "platforms_error":    errors,
-        "linked_data":        linked_data,
-        "dork_urls":          build_dork_urls(username),
-    }
+                linked.setdefault(key, [])
+                linked[key].append({"source": p["platform"], "value": d[key]})
+    return linked
 
 
 # ══════════════════════════════════════════════════════════════════
-# Flask routes
+# SSE Streaming scan — the main endpoint
+# ══════════════════════════════════════════════════════════════════
+@app.route("/api/stream", methods=["POST"])
+def stream_scan():
+    body = request.get_json(force=True, silent=True) or {}
+    username = (body.get("username") or "").strip()
+
+    if not username:
+        return jsonify({"error": "Username is required"}), 400
+    if not re.match(r"^[a-zA-Z0-9._\-]{1,50}$", username):
+        return jsonify({"error": "Invalid username — use only letters, numbers, dots, hyphens, underscores"}), 400
+
+    def generate():
+        result_queue = queue.Queue()
+        total = len(PLATFORMS)
+        completed = [0]
+        found_list = []
+        not_found_list = []
+        error_list = []
+
+        def worker(name, cfg):
+            """Thread worker: check one platform and enqueue result."""
+            try:
+                r = check_platform_sync(name, cfg, username)
+            except Exception as exc:
+                r = {
+                    "platform": name,
+                    "url": cfg["url"].replace("{u}", username),
+                    "found": False,
+                    "confidence": cfg["confidence"],
+                    "category": cfg["category"],
+                    "icon": cfg["icon"],
+                    "data": {},
+                    "error": type(exc).__name__,
+                    "response_time_ms": None,
+                    "http_status": None,
+                }
+            result_queue.put(r)
+
+        # Fire all workers concurrently — 30 threads
+        executor = ThreadPoolExecutor(max_workers=30)
+        for name, cfg in PLATFORMS.items():
+            executor.submit(worker, name, cfg)
+        executor.shutdown(wait=False)
+
+        # Stream results as they arrive from the queue
+        deadline = time.time() + 50  # hard 50s ceiling
+        while completed[0] < total and time.time() < deadline:
+            try:
+                result = result_queue.get(timeout=1.0)
+                completed[0] += 1
+
+                if result.get("found"):
+                    found_list.append(result)
+                elif result.get("error"):
+                    error_list.append(result)
+                else:
+                    not_found_list.append(result)
+
+                event_data = {
+                    "type": "result",
+                    "data": result,
+                    "progress": completed[0],
+                    "total": total,
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
+
+            except queue.Empty:
+                # Send heartbeat comment — keeps connection alive, client ignores it
+                yield ": heartbeat\n\n"
+
+        # Confidence breakdown
+        conf_counts = {"high": 0, "medium": 0, "low": 0}
+        for p in found_list:
+            key = p.get("confidence", "medium")
+            conf_counts[key] = conf_counts.get(key, 0) + 1
+
+        # Final "complete" event with all summary data
+        complete_event = {
+            "type": "complete",
+            "query": {
+                "username": username,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "platforms_checked": completed[0],
+            },
+            "summary": {
+                "found_count": len(found_list),
+                "not_found_count": len(not_found_list),
+                "error_count": len(error_list),
+                "score": round(len(found_list) / max(completed[0], 1) * 100, 1),
+                "confidence_breakdown": conf_counts,
+            },
+            "username_analysis": analyse_username(username),
+            "linked_data": build_linked_data(found_list),
+            "dork_urls": build_dork_urls(username),
+            "platforms_not_found": not_found_list,
+            "platforms_error": error_list,
+        }
+        yield f"data: {json.dumps(complete_event)}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# Other Flask routes
 # ══════════════════════════════════════════════════════════════════
 @app.route("/")
 def index():
     return send_from_directory("../frontend", "index.html")
 
-@app.route("/api/scan", methods=["POST"])
-def scan():
-    body = request.get_json(force=True, silent=True) or {}
-    username = (body.get("username") or "").strip()
-    if not username:
-        return jsonify({"error": "Username is required"}), 400
-    if not re.match(r"^[a-zA-Z0-9._\-]{1,50}$", username):
-        return jsonify({"error": "Invalid username — use only letters, numbers, dots, hyphens, underscores"}), 400
-    result = asyncio.run(run_scan(username))
-    return jsonify(result)
 
 @app.route("/api/platforms", methods=["GET"])
 def list_platforms():
     return jsonify([
-        {"name": n, "url_template": v["url"], "category": v["category"],
-         "icon": v["icon"], "confidence": v["confidence"]}
+        {
+            "name": n,
+            "url_template": v["url"],
+            "category": v["category"],
+            "icon": v["icon"],
+            "confidence": v["confidence"],
+        }
         for n, v in PLATFORMS.items()
     ])
+
 
 @app.route("/api/dorks", methods=["POST"])
 def dorks():
@@ -777,6 +917,7 @@ def dorks():
     if not username:
         return jsonify({"error": "Username required"}), 400
     return jsonify(build_dork_urls(username))
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
